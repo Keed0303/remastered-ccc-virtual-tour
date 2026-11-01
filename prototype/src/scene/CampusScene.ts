@@ -45,6 +45,7 @@ export class CampusScene {
   private _mode: SceneMode = 'orbit';
   private _walking = false;
   private _view = 'overview';
+  private disposed = false;
 
   constructor(elements: SceneElements, events: SceneEvents = {}) {
     this.events = events;
@@ -255,7 +256,7 @@ export class CampusScene {
   }
 
   setPlayerLook(look: Look) {
-    setFigureLook(this.avatar, look, { backpack: true });
+    if (!this.disposed) setFigureLook(this.avatar, look, { backpack: true });
   }
 
   resize() {
@@ -272,6 +273,7 @@ export class CampusScene {
 
   // Releases everything this scene created, so it can be mounted again without leaks.
   dispose() {
+    this.disposed = true;
     this.renderer.setAnimationLoop(null);
     this.listeners.abort();
     this.online.dispose();
