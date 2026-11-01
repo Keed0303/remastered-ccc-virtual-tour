@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { BADGES, COLLIDERS, FLOORS, LOCATIONS, NORTH_YAW_DEG, RANKS, THEMES, VIEWS, WALK_BOUNDS } from './data.js';
-import { FIGURE, buildWorld, createAvatar, figureArm, figureBody, figureLeg } from './world.js';
+import { createAccountUI } from './account.js';
+import { createBackend } from './backend.js';
+import { createOnline } from './online.js';
+import { BADGES, COLLIDERS, FLOORS, LOCATIONS, cameraCeiling, DEFAULT_LOOK, cleanSettings, floorHeight, indoorBounds, NPC_MAX, NORTH_YAW_DEG, RANKS, THEMES, VIEWS, WALK_BOUNDS } from './data.js';
+import { FIGURE, buildWorld, createAvatar, setFigureLook, figureArm, figureBody, figureLeg } from './world.js';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -34,7 +37,9 @@ scene.add(hemi, sun, sun.target);
 const world = buildWorld(scene);
 
 /* ---------- People and vehicles ---------- */
-const WALKERS = 46;
+// Meshes are sized for the maximum, and only the active number is drawn.
+const WALKERS = NPC_MAX;
+let activeWalkers = 46;
 const figureMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, flatShading: true });
 const peopleGroup = new THREE.Group();
 scene.add(peopleGroup);
@@ -76,7 +81,7 @@ function setLimb(mesh, index, x, y, swing) {
 }
 function updateWalkers(dt, time) {
   const counters = looks.map(() => 0);
-  walkers.forEach((w, i) => {
+  walkers.slice(0, activeWalkers).forEach((w, i) => {
     w.t += w.speed * dt * w.dir;
     if (w.t > 1 || w.t < 0) { w.dir *= -1; w.t = THREE.MathUtils.clamp(w.t, 0, 1); }
     const [a, b] = w.path;
@@ -100,6 +105,7 @@ function updateWalkers(dt, time) {
     bodyMeshes[l].instanceMatrix.needsUpdate = true;
     armMeshes[l].instanceMatrix.needsUpdate = true;
   });
+  legMesh.count = activeWalkers * 2;
   legMesh.instanceMatrix.needsUpdate = true;
 }
 
@@ -181,11 +187,18 @@ function confetti() {
     setTimeout(() => d.remove(), 1700);
   }
 }
+function setPassportOpen(open) {
+  document.body.classList.toggle('passport-open', open);
+  $('passport-fab').setAttribute('aria-expanded', String(open));
+}
+$('passport-fab').onclick = () => setPassportOpen(!document.body.classList.contains('passport-open'));
+$('passport-close').onclick = () => setPassportOpen(false);
 function renderPassport() {
   const lvl = Math.floor(game.xp / XP_PER_LEVEL);
   $('level').textContent = `Level ${lvl + 1} ${RANKS[Math.min(lvl, RANKS.length - 1)]}`;
   $('xp').textContent = `${game.xp} XP`;
   $('xp-bar').style.width = `${((game.xp % XP_PER_LEVEL) / XP_PER_LEVEL) * 100}%`;
+  $('fab-count').textContent = `${game.stamps.length}/${LOCATIONS.length}`;
   const stamps = $('stamps');
   stamps.replaceChildren(...LOCATIONS.map((l) => {
     const b = document.createElement('button');
@@ -194,7 +207,7 @@ function renderPassport() {
     b.title = l.name;
     b.setAttribute('aria-label', `${l.name}${got ? ', stamped' : ''}`);
     b.textContent = got ? '★' : LOCATIONS.indexOf(l) + 1;
-    b.onclick = () => selectLocation(l.id, true);
+    b.onclick = () => { setPassportOpen(false); selectLocation(l.id, true); };
     return b;
   }));
   $('badges').replaceChildren(...BADGES.map((bd) => {
@@ -228,6 +241,7 @@ function checkIn(id) {
   confetti();
   if (selected?.id === id) renderCard(selected);
 }
+$('legal-link').onclick = () => $('legal-dialog').showModal();
 $('reset').onclick = () => {
   game = { xp: 0, stamps: [], quiz: [], badges: [] };
   saveState();
@@ -307,6 +321,10 @@ function refreshLabels() {
 const proj = new THREE.Vector3();
 function updateLabels() {
   const w = canvas.clientWidth, h = canvas.clientHeight;
+  // Campus labels would show through the walls while the player is indoors.
+  const indoors = walkActive && indoorBounds(avatar.position.x, avatar.position.z);
+  $('labels').style.display = indoors ? 'none' : '';
+  if (indoors) return;
   for (const lb of labels) {
     if (!lb.show) { lb.el.style.display = 'none'; continue; }
     proj.copy(lb.v).project(camera);
@@ -414,7 +432,7 @@ function closePano() {
   mode = walkActive ? 'walk' : 'orbit';
   $('pano-ui').hidden = true;
   document.body.classList.remove('in-pano');
-  controls.enabled = true;
+  controls.enabled = !walkActive;
   refreshLabels();
 }
 $('pano-close').onclick = closePano;
@@ -443,26 +461,35 @@ function updatePanoCam() {
 }
 
 /* ---------- On-foot mode ---------- */
-const avatar = createAvatar();
+const avatar = createAvatar(DEFAULT_LOOK);
 avatar.visible = false;
 scene.add(avatar);
 const keys = new Set();
 let walkActive = false;
 let nearby = null;
 let walkPhase = 0;
+let fallSpeed = 0;
+const GRAVITY = 19, JUMP_SPEED = 5.8, STEP_LIMIT = 0.5;
 function startWalk() {
   walkActive = true;
   mode = 'walk';
   setView('overview', false);
   avatar.visible = true;
-  avatar.position.set(29, 0, -116);
+  avatar.position.set(29, floorHeight(29, -116), -116);
   avatar.rotation.y = Math.PI;
+  fallSpeed = 0;
   document.body.classList.add('walking');
   camera.clearViewOffset();
   $('walk-ui').hidden = false;
   $('card').hidden = true;
   selected = null;
-  flyTo([29, 10, -131], [29, 1.2, -116], 1, false);
+  tween = null;
+  controls.enabled = false;
+  look.yaw = Math.PI;
+  look.pitch = 0.32;
+  look.distance = 6.5;
+  look.actual = 6.5;
+  updateFollowCamera(0);
   refreshLabels();
 }
 function stopWalk() {
@@ -473,6 +500,10 @@ function stopWalk() {
   $('walk-ui').hidden = true;
   $('prompt').hidden = true;
   keys.clear();
+  releaseMouse();
+  look.drag = null;
+  controls.enabled = true;
+  controls.target.copy(avatar.position);
   resize();
   setView('overview');
 }
@@ -480,28 +511,61 @@ $('btn-walk').onclick = () => (walkActive ? stopWalk() : startWalk());
 $('walk-exit').onclick = stopWalk;
 addEventListener('keydown', (e) => {
   if (e.code === 'Escape') {
+    // The first Esc only frees the mouse, as in most games.
+    if (document.pointerLockElement || performance.now() - mouseFreedAt < 250) return;
     if (mode === 'pano') closePano();
     else if (walkActive) stopWalk();
     else if (selected) { $('card').hidden = true; selected = null; }
     return;
   }
-  if (!walkActive || mode !== 'walk') return;
-  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code)) {
+  if (e.target instanceof HTMLInputElement || !walkActive || mode !== 'walk') return;
+  if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight', 'Space'].includes(e.code)) {
     keys.add(e.code);
     e.preventDefault();
   }
-  if (e.code === 'KeyE' && nearby) {
-    selected = nearby;
-    renderCard(nearby);
-    checkIn(nearby.id);
-  }
+  if (e.code === 'KeyE') checkInNearby();
 });
+function checkInNearby() {
+  if (!nearby) return;
+  releaseMouse();
+  selected = nearby;
+  renderCard(nearby);
+  checkIn(nearby.id);
+}
 addEventListener('keyup', (e) => keys.delete(e.code));
 addEventListener('blur', () => keys.clear());
-document.querySelectorAll('.walk-pad button').forEach((b) => {
-  b.addEventListener('pointerdown', (e) => { e.preventDefault(); keys.add(b.dataset.k); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, () => keys.delete(b.dataset.k)));
+
+/* ---------- Touch controls ---------- */
+const stick = { x: 0, y: 0, id: null };
+const STICK_RADIUS = 52, STICK_DEADZONE = 0.14;
+function moveStick(e) {
+  const r = $('stick').getBoundingClientRect();
+  let dx = (e.clientX - (r.left + r.width / 2)) / STICK_RADIUS;
+  let dy = (e.clientY - (r.top + r.height / 2)) / STICK_RADIUS;
+  const len = Math.hypot(dx, dy);
+  if (len > 1) { dx /= len; dy /= len; }
+  $('stick-knob').style.transform = `translate(${dx * STICK_RADIUS}px,${dy * STICK_RADIUS}px)`;
+  const live = Math.hypot(dx, dy) > STICK_DEADZONE;
+  stick.x = live ? dx : 0;
+  stick.y = live ? -dy : 0;
+}
+function endStick() {
+  stick.x = 0; stick.y = 0; stick.id = null;
+  $('stick-knob').style.transform = '';
+}
+$('stick').addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  stick.id = e.pointerId;
+  try { $('stick').setPointerCapture(e.pointerId); } catch { /* Movement still works without capture. */ }
+  moveStick(e);
 });
+$('stick').addEventListener('pointermove', (e) => { if (e.pointerId === stick.id) moveStick(e); });
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  $('stick').addEventListener(type, (e) => { if (e.pointerId === stick.id) endStick(); });
+}
+$('btn-jump').addEventListener('pointerdown', (e) => { e.preventDefault(); keys.add('Space'); });
+for (const type of ['pointerup', 'pointerleave', 'pointercancel']) $('btn-jump').addEventListener(type, () => keys.delete('Space'));
+$('btn-checkin').onclick = () => checkInNearby();
 const R = 0.5;
 const blocked = (x, z) => COLLIDERS.some((c) => x > c.x0 - R && x < c.x1 + R && z > c.z0 - R && z < c.z1 + R);
 const fwd = new THREE.Vector3();
@@ -511,43 +575,143 @@ function updateWalk(dt) {
   if (keys.has('KeyS') || keys.has('ArrowDown')) az -= 1;
   if (keys.has('KeyA') || keys.has('ArrowLeft')) ax -= 1;
   if (keys.has('KeyD') || keys.has('ArrowRight')) ax += 1;
-  const before = avatar.position.clone();
+  ax += stick.x;
+  az += stick.y;
   const moving = ax || az;
   if (moving) {
-    camera.getWorldDirection(fwd);
-    fwd.y = 0; fwd.normalize();
+    fwd.set(-Math.sin(look.yaw), 0, -Math.cos(look.yaw));
     const rx = -fwd.z, rz = fwd.x;
     let dx = fwd.x * az + rx * ax, dz = fwd.z * az + rz * ax;
     const len = Math.hypot(dx, dz);
     dx /= len; dz /= len;
-    const speed = (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 11 : 5.6) * dt;
+    // The joystick walks at a speed set by how far it is pushed, and runs near its edge.
+    const pushed = Math.min(1, Math.hypot(ax, az));
+    const running = keys.has('ShiftLeft') || keys.has('ShiftRight') || Math.hypot(stick.x, stick.y) > 0.92;
+    const speed = (running ? 11 : 5.6) * pushed * dt;
     const b = WALK_BOUNDS;
     const nx = THREE.MathUtils.clamp(avatar.position.x + dx * speed, b.x0, b.x1);
     const nz = THREE.MathUtils.clamp(avatar.position.z + dz * speed, b.z0, b.z1);
-    if (!blocked(nx, avatar.position.z)) avatar.position.x = nx;
-    if (!blocked(avatar.position.x, nz)) avatar.position.z = nz;
-    avatar.rotation.y = Math.atan2(dx, dz);
+    // A move is allowed when nothing solid is in the way and the surface ahead is low enough to step onto.
+    const canStand = (x, z) => !blocked(x, z) && floorHeight(x, z) - avatar.position.y <= STEP_LIMIT;
+    if (canStand(nx, avatar.position.z)) avatar.position.x = nx;
+    if (canStand(avatar.position.x, nz)) avatar.position.z = nz;
+    // Turn smoothly toward the direction of travel.
+    const turn = Math.atan2(Math.sin(Math.atan2(dx, dz) - avatar.rotation.y), Math.cos(Math.atan2(dx, dz) - avatar.rotation.y));
+    avatar.rotation.y += turn * Math.min(1, dt * 12);
     walkPhase += dt * 11;
+  }
+  // Gravity, with a quick climb when the feet meet a higher step.
+  const floor = floorHeight(avatar.position.x, avatar.position.z);
+  const grounded = avatar.position.y <= floor + 0.04 && fallSpeed <= 0;
+  if (grounded && keys.has('Space')) fallSpeed = JUMP_SPEED;
+  if (avatar.position.y < floor && fallSpeed <= 0) {
+    avatar.position.y = Math.min(floor, avatar.position.y + Math.max(floor - avatar.position.y, 0.05) * Math.min(1, dt * 16));
+    fallSpeed = 0;
+  } else {
+    fallSpeed -= GRAVITY * dt;
+    avatar.position.y += fallSpeed * dt;
+    if (avatar.position.y <= floor && fallSpeed <= 0) { avatar.position.y = floor; fallSpeed = 0; }
   }
   const swing = moving ? Math.sin(walkPhase) * 0.5 : 0;
   avatar.userData.legL.rotation.x = swing;
   avatar.userData.legR.rotation.x = -swing;
   avatar.userData.armL.rotation.x = -swing;
   avatar.userData.armR.rotation.x = swing;
-  const dp = avatar.position.clone().sub(before);
-  camera.position.add(dp);
-  controls.target.add(dp);
 
   nearby = null;
   let best = 7.5;
   for (const l of LOCATIONS) {
-    if (l.floor) continue;
-    const d = Math.hypot(l.pos[0] - avatar.position.x, l.pos[2] - avatar.position.z);
+    const spot = l.walkPos || (l.floor ? null : [l.pos[0], l.pos[2]]);
+    if (!spot) continue;
+    const d = Math.hypot(spot[0] - avatar.position.x, spot[1] - avatar.position.z);
     if (d < best) { best = d; nearby = l; }
   }
   const prompt = $('prompt');
   prompt.hidden = !nearby;
-  if (nearby) prompt.textContent = game.stamps.includes(nearby.id) ? `${nearby.name} · Stamped ★` : `${nearby.name} · Press E to check in`;
+  $('btn-checkin').hidden = !nearby || game.stamps.includes(nearby.id);
+  if (nearby) prompt.textContent = game.stamps.includes(nearby.id) ? `${nearby.name} · Stamped ★` : `${nearby.name} · ${matchMedia('(max-width: 760px), (pointer: coarse)').matches ? 'Tap Check in' : 'Press E to check in'}`;
+}
+
+/* ---------- Third-person camera ---------- */
+let mouseFreedAt = -1000;
+const look = { yaw: Math.PI, pitch: 0.32, distance: 6.5, actual: 6.5, drag: null };
+const LOOK_SPEED = 0.0032, PITCH_MIN = -0.3, PITCH_MAX = 1.25, ZOOM_MIN = 2.5, ZOOM_MAX = 14;
+const CAMERA_GAP = 0.3;
+const camTarget = new THREE.Vector3();
+const camWanted = new THREE.Vector3();
+
+function turnCamera(dx, dy) {
+  look.yaw -= dx * LOOK_SPEED;
+  look.pitch = THREE.MathUtils.clamp(look.pitch + dy * LOOK_SPEED, PITCH_MIN, PITCH_MAX);
+}
+function releaseMouse() {
+  if (document.pointerLockElement) document.exitPointerLock?.();
+}
+canvas.addEventListener('pointerdown', (e) => {
+  if (mode !== 'walk') return;
+  look.drag = [e.clientX, e.clientY, e.pointerId];
+  // Capture the mouse like a game. Holding and dragging still works if the browser refuses.
+  if (e.pointerType === 'mouse' && !document.pointerLockElement) {
+    try { canvas.requestPointerLock()?.catch?.(() => {}); } catch { /* Dragging remains available. */ }
+  }
+});
+addEventListener('pointermove', (e) => {
+  if (mode !== 'walk') return;
+  if (document.pointerLockElement === canvas) {
+    turnCamera(e.movementX, e.movementY);
+  } else if (look.drag && e.pointerId === look.drag[2]) {
+    turnCamera(e.clientX - look.drag[0], e.clientY - look.drag[1]);
+    look.drag = [e.clientX, e.clientY, e.pointerId];
+  }
+});
+for (const type of ['pointerup', 'pointercancel']) {
+  addEventListener(type, (e) => { if (look.drag && e.pointerId === look.drag[2]) look.drag = null; });
+}
+canvas.addEventListener('wheel', (e) => {
+  if (mode !== 'walk') return;
+  e.preventDefault();
+  look.distance = THREE.MathUtils.clamp(look.distance + e.deltaY * 0.008, ZOOM_MIN, ZOOM_MAX);
+}, { passive: false });
+document.addEventListener('pointerlockchange', () => {
+  if (!document.pointerLockElement) mouseFreedAt = performance.now();
+  document.body.classList.toggle('mouse-locked', !!document.pointerLockElement);
+});
+
+// How far the camera can sit from the player before a wall gets in the way, from 0 to 1.
+function clearPath(from, to) {
+  let best = 1;
+  const dx = to.x - from.x, dz = to.z - from.z, dy = to.y - from.y;
+  for (const c of COLLIDERS) {
+    if (c.top === 0) continue;
+    let t0 = 0, t1 = 1, hit = true;
+    for (const [o, d, a, b] of [[from.x, dx, c.x0 - CAMERA_GAP, c.x1 + CAMERA_GAP], [from.z, dz, c.z0 - CAMERA_GAP, c.z1 + CAMERA_GAP]]) {
+      if (Math.abs(d) < 1e-6) { if (o < a || o > b) hit = false; continue; }
+      let n = (a - o) / d, f = (b - o) / d;
+      if (n > f) [n, f] = [f, n];
+      t0 = Math.max(t0, n); t1 = Math.min(t1, f);
+    }
+    if (!hit || t0 > t1 || t0 <= 0) continue;
+    if (c.top !== undefined && from.y + dy * t0 > c.top) continue;
+    best = Math.min(best, t0);
+  }
+  return best;
+}
+
+function updateFollowCamera(dt) {
+  camTarget.set(avatar.position.x, avatar.position.y + 1.65, avatar.position.z);
+  const cosP = Math.cos(look.pitch);
+  camWanted.set(Math.sin(look.yaw) * cosP, Math.sin(look.pitch), Math.cos(look.yaw) * cosP).multiplyScalar(look.distance).add(camTarget);
+  // Stay under ceilings and above the floor before checking walls.
+  const ceiling = cameraCeiling(camWanted.x, camWanted.z);
+  if (camWanted.y > ceiling) camWanted.y = ceiling;
+  const free = clearPath(camTarget, camWanted) * look.distance;
+  // Move in at once when a wall blocks the view, and back out gently.
+  look.actual = free < look.actual ? free : look.actual + (free - look.actual) * Math.min(1, dt * 5 || 1);
+  const k = look.distance > 0 ? look.actual / look.distance : 1;
+  camera.position.lerpVectors(camTarget, camWanted, k);
+  const floorY = floorHeight(camera.position.x, camera.position.z) + 0.3;
+  if (camera.position.y < floorY) camera.position.y = floorY;
+  camera.lookAt(camTarget);
 }
 
 /* ---------- Themes and layer toggles ---------- */
@@ -579,6 +743,8 @@ const layers = [
 ];
 $('toggles').replaceChildren(...layers.map((l) => {
   const b = document.createElement('button');
+  l.button = b;
+  l.startsOn = l.on;
   b.textContent = l.name;
   b.setAttribute('aria-pressed', String(l.on));
   b.classList.toggle('on', l.on);
@@ -661,17 +827,146 @@ renderer.setAnimationLoop(() => {
     controls.target.lerpVectors(tween.t0, tween.t1, e);
     if (tween.t >= 1) tween = null;
   }
-  if (walkActive) updateWalk(dt);
-  controls.update();
+  if (walkActive) {
+    updateWalk(dt);
+    updateFollowCamera(dt);
+  } else {
+    controls.update();
+  }
   updateWalkers(dt, time);
   updateTraffic(dt);
   world.flag.userData.wave(time);
+  online.update(dt);
+  sendPosition(time);
   camera.getWorldDirection(camDir);
   const heading = Math.atan2(camDir.x, -camDir.z) - Math.atan2(northDir.x, -northDir.z);
   northEl.style.transform = `rotate(${-heading}rad)`;
   updateLabels();
   renderer.render(scene, camera);
 });
+
+/* ---------- Site settings from the admin page ---------- */
+const SETTING_FOR_LAYER = { people: 'showStudents', cars: 'showVehicles', labels: 'showLabels', wire: 'showWireframe' };
+function applySettings(raw) {
+  const settings = cleanSettings(raw);
+  activeWalkers = settings.npcCount;
+  for (const layer of layers) {
+    const allowed = settings[SETTING_FOR_LAYER[layer.id]];
+    const wasHidden = layer.button.hidden;
+    layer.button.hidden = !allowed;
+    let on = layer.on;
+    if (!allowed) on = false;
+    else if (wasHidden) on = layer.startsOn;
+    if (on !== layer.on || !allowed) {
+      layer.on = on;
+      layer.set(on);
+      layer.button.classList.toggle('on', on);
+      layer.button.setAttribute('aria-pressed', String(on));
+    }
+  }
+}
+
+/* ---------- Accounts and other students ---------- */
+let backend = null;
+let profile = null;
+let campus = null;
+let lastSent = { at: -10, key: '' };
+const online = createOnline({ scene, camera, canvas, avatar, bubbleRoot: $('bubbles'), isWalking: () => walkActive });
+
+async function refreshPassportCount() {
+  if (!backend) return;
+  try {
+    const count = await backend.passportCount();
+    $('passport-count').textContent = `Passports issued: ${count}`;
+  } catch {
+    $('passport-count').textContent = '';
+  }
+}
+function setOnlineCount(count) {
+  const el = $('online-count');
+  el.hidden = !count;
+  el.textContent = `${count} online`;
+}
+function sendPosition(time) {
+  if (!campus || !profile) return;
+  const p = avatar.position;
+  const key = walkActive ? `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)},${avatar.rotation.y.toFixed(2)}` : lastSent.key;
+  const changed = key !== lastSent.key;
+  // Up to ten updates a second while moving, plus a slow update so late joiners catch up.
+  if ((changed && time - lastSent.at > 0.1) || (walkPositionKnown && time - lastSent.at > 2)) {
+    campus.sendMove({ id: profile.id, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +avatar.rotation.y.toFixed(2) });
+    lastSent = { at: time, key };
+    walkPositionKnown = true;
+  }
+}
+let walkPositionKnown = false;
+
+async function enterCampus(next) {
+  profile = next;
+  setFigureLook(avatar, profile, { backpack: true });
+  online.setSelf(profile);
+  $('btn-account').textContent = profile.name;
+  $('btn-account').classList.add('signed-in');
+  refreshPassportCount();
+  try {
+    campus = await backend.joinCampus(profile, {
+      onUsers: (list) => { setOnlineCount(online.setUsers(list)); refreshPassportCount(); },
+      onMove: (move) => online.applyMove(move),
+      onError: () => toast('Live campus connection was lost.'),
+    });
+  } catch {
+    toast('Could not join the live campus.');
+  }
+}
+async function leaveCampus() {
+  await campus?.leave();
+  campus = null;
+  profile = null;
+  walkPositionKnown = false;
+  online.clear();
+  setOnlineCount(0);
+  setFigureLook(avatar, DEFAULT_LOOK, { backpack: true });
+  $('btn-account').textContent = 'Log in / Register';
+  $('btn-account').classList.remove('signed-in');
+  refreshPassportCount();
+}
+
+let accountUI = null;
+$('btn-account').onclick = () => {
+  if (accountUI) accountUI.open();
+  else toast('Accounts are not set up on this site yet.');
+};
+(async () => {
+  try {
+    backend = await createBackend();
+    if (!backend) { $('passport-count').textContent = ''; return; }
+    accountUI = createAccountUI({
+      backend,
+      getProfile: () => profile,
+      onSignedIn: (next, isNew) => {
+        enterCampus(next);
+        toast(isNew ? `Welcome, ${next.name}! Your Student Passport is ready.` : `Welcome back, ${next.name}!`);
+      },
+      onSignedOut: () => { leaveCampus(); toast('Logged out.'); },
+      onLookSaved: (saved) => {
+        profile = saved;
+        setFigureLook(avatar, saved, { backpack: true });
+        online.setSelf(saved);
+        $('btn-account').textContent = saved.name;
+        campus?.update(saved);
+        toast('Character saved.');
+      },
+    });
+    backend.getSettings().then((s) => { if (s) applySettings(s); }).catch(() => {});
+    backend.onSettingsChange(applySettings);
+    const existing = await backend.getSession();
+    if (existing) enterCampus(existing);
+    else refreshPassportCount();
+  } catch {
+    $('passport-count').textContent = '';
+    toast('Accounts could not be loaded right now.');
+  }
+})();
 
 /* ---------- Start ---------- */
 camera.position.copy(fitCamera(VIEWS[0].cam, VIEWS[0].target));
@@ -684,4 +979,4 @@ updateTraffic(0);
 $('loading').remove();
 
 // Exposed for automated checks.
-window.__ccc = { camera, controls, renderer, scene, world, avatar, keys, get mode() { return mode; }, get game() { return game; }, COLLIDERS, setView, selectLocation, stepWalk: updateWalk, stopTween: () => { tween = null; } };
+window.__ccc = { applySettings, get activeWalkers() { return activeWalkers; }, legMesh, layers, stick, online, sendPosition, get campus() { return campus; }, get profile() { return profile; }, get backend() { return backend; }, camera, controls, renderer, scene, world, avatar, keys, get mode() { return mode; }, get game() { return game; }, COLLIDERS, setView, selectLocation, stepWalk: updateWalk, stepCamera: updateFollowCamera, look, floorHeight, stopTween: () => { tween = null; } };

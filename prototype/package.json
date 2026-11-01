@@ -9,9 +9,12 @@
     "preview": "vite preview --port 5173"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
     "three": "^0.187.0"
   },
   "devDependencies": {
     "vite": "^8.3.5"
-  }
+  },
+  "author": "Manuel Kyd Thomas Nagpala",
+  "license": "SEE LICENSE IN ../COPYRIGHT.md"
 }

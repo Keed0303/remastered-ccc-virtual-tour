@@ -227,13 +227,18 @@ npm run dev
 - Cutaway views of all 5 floors, with rooms placed from the original floor plans
 - 12 locations using the original 360° photos and panel text
 - Student Passport with stamps, XP, levels, quizzes, and badges saved in the browser
-- On-foot walking mode with building collisions
+- On-foot mode with a third-person camera, mouse look, building collisions, gravity, jumping, and walkable stairs
+- A walk-in 3D Old Building lobby modelled from the tour's lobby panorama, entered through the main entrance
 - Blocky, Minecraft-inspired students in the CCC uniform: white blouse with navy piping and crest, navy pants
 - Day, golden hour, and night themes, plus layer toggles
 
-**It leaves out:** true 3D rooms, the other 40 panoramas, sound, and surveyed dimensions. The building styles follow real references, but counts of windows and props, and the rear of the buildings, are still approximate.
+**Added since the first sample:** phone controls, accounts, character customization, and live presence. See the dated notes in this folder.
+
+**It leaves out:** true 3D rooms beyond the lobby, the other 40 panoramas, sound, and surveyed dimensions. The building styles follow real references, but counts of windows and props, and the rear of the buildings, are still approximate.
 
 ## 10. Decisions needed
+
+Copyright terms for the project are in [COPYRIGHT.md](../../COPYRIGHT.md).
 
 1. **Your thesis deadline**, so the phases can be fitted to real dates.
 2. **Site survey access**, and whether you can get floor plans or drone permission from the college.

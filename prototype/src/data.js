@@ -123,12 +123,12 @@ export const LOCATIONS = [
     quiz: { q: 'In what year was CCC founded?', options: ['2001', '2006', '2016'], answer: 1 },
   },
   {
-    id: 'lobby', name: 'Old Building Lobby', kind: 'Old Building · Ground Floor', floor: 'ob_gf', pos: centre('ob_gf', 'Lobby'), pano: 'panos/lobby.jpg',
+    id: 'lobby', name: 'Old Building Lobby', kind: 'Old Building · Ground Floor', floor: 'ob_gf', pos: centre('ob_gf', 'Lobby'), walkPos: [24, -30], pano: 'panos/lobby.jpg',
     text: ['The City College of Calamba envisions itself as an accredited premier academic institution in the region providing quality learning opportunities to financially-challenged but deserving students.'],
     quiz: { q: "CCC's mission is guided by the ideals of which national hero?", options: ['Andres Bonifacio', 'Dr. Jose Rizal', 'Apolinario Mabini'], answer: 1 },
   },
   {
-    id: 'lazaro', name: 'Roman Lazaro Hall', kind: 'Old Building · Ground Floor', floor: 'ob_gf', pos: centre('ob_gf', 'Lazaro Hall'), pano: 'panos/lazaro.jpg',
+    id: 'lazaro', name: 'Roman Lazaro Hall', kind: 'Old Building · Ground Floor', floor: 'ob_gf', pos: centre('ob_gf', 'Lazaro Hall'), walkPos: [24, -17], pano: 'panos/lazaro.jpg',
     text: ['This is where most events happen inside the institution: awardings, orientation for new students, Christmas parties, general assemblies and many more. It is named after Roman Lazaro, who served as municipal president of Calamba for three terms.'],
     quiz: { q: 'How many terms did Roman Lazaro serve as municipal president?', options: ['Two', 'Three', 'Four'], answer: 1 },
   },
@@ -196,10 +196,95 @@ export const THEMES = [
 
 // Solid footprints used for on-foot collisions.
 export const COLLIDERS = [
-  { x0: -4, x1: 52, z0: -39, z1: -24 }, { x0: 16, x1: 32, z0: -45.5, z1: -39 }, { x0: 3.5, x1: 14.2, z0: -50, z1: -39 },
-  { x0: 33.8, x1: 44.5, z0: -50, z1: -39 }, { x0: -5, x1: 36, z0: -24, z1: 6 }, { x0: 40, x1: 57, z0: -24, z1: -16 },
-  { x0: 46, x1: 57, z0: -16, z1: 6 }, { x0: 36, x1: 46, z0: -2, z1: 6 }, { x0: 0, x1: 47, z0: 6, z1: 50 },
-  { x0: 0, x1: 44, z0: 52, z1: 90 }, { x0: 49.5, x1: 57.5, z0: 8, z1: 48 }, { x0: 46, x1: 57.5, z0: 52, z1: 88 },
-  { x0: 4, x1: 30, z0: 90, z1: 94 }, { x0: 53, x1: 66, z0: -92, z1: -74 }, { x0: 28.4, x1: 39.6, z0: -79.6, z1: -68.4 },
+  // Old Building exterior. The door gap between x 21.7 and 26.3 stays open.
+  { x0: -4, x1: 10, z0: -39, z1: -24 }, { x0: 38, x1: 52, z0: -39, z1: -24 }, { x0: 10, x1: 21.7, z0: -39.6, z1: -37.4 },
+  { x0: 26.3, x1: 38, z0: -39.6, z1: -37.4 }, { x0: 3.5, x1: 14.2, z0: -50, z1: -39, top: 3 }, { x0: 33.8, x1: 44.5, z0: -50, z1: -39, top: 3 },
+  { x0: 15.7, x1: 16.9, z0: -45.2, z1: -44, top: 0 }, { x0: 31.1, x1: 32.3, z0: -45.2, z1: -44, top: 0 },
+  { x0: -5, x1: 10, z0: -24, z1: 6 }, { x0: 38, x1: 57, z0: -24, z1: -16 }, { x0: 46, x1: 57, z0: -16, z1: 6 }, { x0: 10, x1: 46, z0: -5, z1: 6 }, { x0: 38, x1: 40, z0: -16, z1: -5 },
+  // Lobby walls, corridors, stage, and furniture.
+  { x0: 16.5, x1: 21.3, z0: -20, z1: -5 }, { x0: 26.7, x1: 31.5, z0: -20, z1: -5 }, { x0: 10, x1: 13.5, z0: -20, z1: -5 }, { x0: 34.5, x1: 38, z0: -20, z1: -5 },
+  { x0: 21, x1: 27, z0: -15.5, z1: -5 }, { x0: 13.5, x1: 16.5, z0: -6, z1: -5 }, { x0: 31.5, x1: 34.5, z0: -6, z1: -5 },
+  { x0: 19.6, x1: 21.3, z0: -22.2, z1: -19.7, top: 3.2 }, { x0: 26.7, x1: 28.4, z0: -22.2, z1: -19.7, top: 3.2 },
+  { x0: 10, x1: 16.3, z0: -24.5, z1: -23.4, top: 2.9 }, { x0: 10, x1: 11.4, z0: -23.4, z1: -20, top: 2.9 }, { x0: 33.5, x1: 37.8, z0: -25, z1: -22.4, top: 2.7 }, { x0: 31.8, x1: 33, z0: -22.6, z1: -21.5, top: 3.3 },
+  { x0: 21.5, x1: 21.9, z0: -37.4, z1: -35.1, top: 0 }, { x0: 26.1, x1: 26.5, z0: -37.4, z1: -35.1, top: 0 },
+  // Other buildings and landmarks.
+  { x0: 0, x1: 47, z0: 6, z1: 50 }, { x0: 0, x1: 44, z0: 52, z1: 90 }, { x0: 49.5, x1: 57.5, z0: 8, z1: 48 }, { x0: 46, x1: 57.5, z0: 52, z1: 88 },
+  { x0: 4, x1: 30, z0: 90, z1: 94, top: 3.3 }, { x0: 53, x1: 66, z0: -92, z1: -74 }, { x0: 28.4, x1: 39.6, z0: -79.6, z1: -68.4, top: 3 },
 ];
+
+// Height of the walkable surface at a point. This matches the steps built in world.js.
+export function floorHeight(x, z) {
+  if (x >= 14.2 && x <= 33.8 && z >= -50 && z < -45.94) return (1.5 * (Math.floor((z + 50) / 0.58) + 1)) / 8;
+  if (x >= 14.2 && x <= 33.8 && z >= -45.94 && z < -38) return 1.5;
+  if (x >= 10 && x <= 38 && z >= -38 && z <= -5) {
+    if (x >= 21.3 && x <= 26.7 && z >= -22.2 && z < -19.2) return 1.84 + 0.17 * (Math.floor((z + 22.2) / 0.5) + 1);
+    if (x >= 21.3 && x <= 26.7 && z >= -19.2) return 2.86;
+    if (x >= 16 && x <= 32 && z >= -25 && z < -20) return 1.84;
+    if (x >= 15 && x <= 33 && z >= -26 && z < -20) return 1.67;
+    return 1.5;
+  }
+  if (x >= 18 && x <= 50 && z >= -125 && z < -58) return 0.1;
+  return 0;
+}
+
+// The highest the third-person camera may go at a point, so it stays under ceilings.
+export function cameraCeiling(x, z) {
+  if (x >= 15.5 && x <= 32.5 && z >= -46.2 && z < -38) return 6;
+  if (x >= 10 && x <= 38 && z >= -38 && z <= -5) {
+    if (z >= -20) {
+      if (x < 17 || x > 31) return 4.15;
+      return 5.6;
+    }
+    return 5.65;
+  }
+  return Infinity;
+}
+
+// True when a point is inside the lobby or its corridors.
+export function indoorBounds(x, z) {
+  return z >= -38.2 && z <= -5 && x >= 10 && x <= 38;
+}
 export const WALK_BOUNDS = { x0: -16, x1: 66, z0: -124, z1: 101 };
+
+// Character looks. Colours from other users always pass through cleanProfile first.
+export const SKIN_SWATCHES = [
+  { name: 'Fair', value: '#f3cfb3' }, { name: 'Light', value: '#e8b995' }, { name: 'Tan', value: '#e0ac84' },
+  { name: 'Morena', value: '#c98d63' }, { name: 'Kayumanggi', value: '#a96f48' }, { name: 'Deep', value: '#7c4f33' },
+];
+export const HAIR_SWATCHES = [
+  { name: 'Black', value: '#17120e' }, { name: 'Dark brown', value: '#2a2118' }, { name: 'Brown', value: '#5a3a22' },
+  { name: 'Auburn', value: '#7d3a1e' }, { name: 'Blonde', value: '#c9a24d' }, { name: 'Gray', value: '#9a9a9a' },
+  { name: 'Blue', value: '#1f62b8' }, { name: 'Pink', value: '#d65b94' },
+];
+export const DEFAULT_LOOK = { gender: 'male', skin: '#e0ac84', hair: '#2a2118' };
+
+export const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
+
+export function cleanProfile(raw) {
+  if (!raw || typeof raw.id !== 'string' || !raw.id) return null;
+  const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, 24) : '';
+  return {
+    id: raw.id.slice(0, 64),
+    name: name.length >= 2 ? name : 'Student',
+    gender: raw.gender === 'female' ? 'female' : 'male',
+    skin: isHexColor(raw.skin) ? raw.skin : DEFAULT_LOOK.skin,
+    hair: isHexColor(raw.hair) ? raw.hair : DEFAULT_LOOK.hair,
+  };
+}
+
+// Site-wide settings that admins control.
+export const NPC_MAX = 200;
+export const DEFAULT_SETTINGS = { showWireframe: true, showStudents: true, showVehicles: true, showLabels: true, npcCount: 46 };
+
+export function cleanSettings(raw) {
+  const s = raw || {};
+  const flag = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
+  const npc = Number(s.npcCount);
+  return {
+    showWireframe: flag(s.showWireframe, DEFAULT_SETTINGS.showWireframe),
+    showStudents: flag(s.showStudents, DEFAULT_SETTINGS.showStudents),
+    showVehicles: flag(s.showVehicles, DEFAULT_SETTINGS.showVehicles),
+    showLabels: flag(s.showLabels, DEFAULT_SETTINGS.showLabels),
+    npcCount: Number.isFinite(npc) ? Math.min(NPC_MAX, Math.max(0, Math.round(npc))) : DEFAULT_SETTINGS.npcCount,
+  };
+}
