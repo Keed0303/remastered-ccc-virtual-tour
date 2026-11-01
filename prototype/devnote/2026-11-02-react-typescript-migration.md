@@ -1,7 +1,7 @@
 # React + Vite + TypeScript migration — analysis and plan
 
 **Date:** 2026-11-02
-**Status:** Approved 2026-11-02; in progress on branch `feat/react-typescript-migration`
+**Status:** Migrated on branch `feat/react-typescript-migration`; not merged or pushed. Live write checks remain for the project owner.
 **Scope:** All of `prototype/`, except the Supabase server code and database
 
 ---
@@ -266,4 +266,52 @@ Visual redesign, new features, database changes, and Edge Function changes.
 
 ## Outcome
 
-To be filled in after implementation.
+The app now runs on React 19, Vite 8, TypeScript 7 (strict), and React Router 7, with no JavaScript left in `src/`. Each phase has its own commit.
+
+### Test results
+
+These ran on the final code, 2026-11-02:
+
+- `npm run typecheck`: no errors, with no `any` in `src/`
+- `npm test`: 33 of 33 passed in 4 files
+- `npm run test:e2e`: 13 of 13 passed in Chrome with software WebGL, on the demo backend
+
+Those tests cover views, themes, layers, the info card, quiz, 360° viewer, walking physics, indoor label hiding, register, customize, log in, session restore, two students seeing each other, a hostile name staying plain text, admin users and settings with live updates, the student refusal, the phone controls, and the single canvas under Strict Mode.
+
+### Checked against the original
+
+Old and new were captured side by side at 1280×800 and 390×844 for the overview, a floor, the card, walking, and the phone. The layout matches. Pixel differences come from random students and cars, and from camera timing in the card shot.
+
+### Checked live
+
+- **Logged out, dev and production builds:** the campus and admin login load with no console errors. `passport_count` and `app_settings` return 200, and `window.__ccc` is absent in production.
+- **Logged in, read-only:** the browser pane already held the project owner's admin session. In it, the new admin page listed users through the Edge Function, read settings, and counted who is online. So the "Verify JWT" setting isn't blocking the function today. Nothing was changed.
+
+### Not checked
+
+- Live sign-up, log in, log out, and saving a character
+- Live user create, edit, and delete, and saving settings
+- Two real accounts seeing each other through Supabase Realtime
+- Frame rate on a real phone, and real touch input. Touch was simulated.
+
+### Differences from the plan
+
+- **Phase 3 ran through a temporary `main.js` bridge,** not `useCampusScene`, so the phase could end working without React. Phase 4 removed the bridge and added the hook.
+- **Pages link with full page loads.** `campus.css` and `admin.css` style the same elements differently, and a stylesheet stays loaded after client-side navigation. Hosting must serve `index.html` for `/admin`.
+- **`NameBubbles.tsx` renders only the container.** `OnlinePlayers` still creates the bubbles, because they move every frame. Names use `textContent`.
+- **Added:** `usePassportCount`, `utils/layers.ts`, and `tests/e2e/`.
+- **Vitest is 3.2.7, not 5.** Vitest 5 excludes Node 23, and npm failed with an unclear `edgesOut` error when it was forced. Vitest keeps its own Vite 7 for tests.
+- **Small visible changes:** the legal dialog and `COPYRIGHT.md` now credit React and React Router.
+- **Replaced deprecated Three.js calls:** `Timer` instead of `Clock`, and `PCFShadowMap` instead of the removed soft shadow type, which Three.js was already substituting.
+
+### Problems found during the migration
+
+- **Startup error in the bridge:** the scene reports its first view while it is being constructed, and the handler read passport state that wasn't created yet. React avoids this because state exists before the effect runs.
+- **Incomplete phase 2 commit:** a failed `git add` left out the new files. The local commit was corrected before anything was pushed.
+- **Realtime channels under Strict Mode:** the client reuses a channel that is still closing, so joins and leaves now run through a promise queue.
+
+### Open items
+
+- The site's live settings currently hide all four layers, with 8 NPCs. That was already saved before these checks and wasn't changed, but every visitor sees it.
+- A missing `favicon.ico` logs a 404. This was already the case, and the tests ignore it.
+- The campus chunk is 661 kB (173 kB gzipped), mostly Three.js and the scene.
