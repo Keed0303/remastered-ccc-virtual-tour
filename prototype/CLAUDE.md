@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository.
 
 ## What this is
 
-A Three.js prototype for the **CCC Virtual Tour V2** remaster — a gamified 3D
+A React, TypeScript, and Three.js prototype for the **CCC Virtual Tour V2** remaster — a gamified 3D
 model of City College of Calamba (Calamba, Laguna, Philippines) that replaces a
 2022 desktop 360°-panorama tour. This is **Stage A** of a staged plan: a
 stylized procedural campus diorama with cutaway floor plans, the original 360°
@@ -24,46 +24,71 @@ lives in `prototype/`. `../video/` is gitignored.
 
 ```bash
 npm install
-npm run dev      # Vite dev server on :5173
-npm run build    # -> dist/
-npm run preview  # serve dist/ on :5173
+npm run dev        # Vite dev server on :5173
+npm run build      # -> dist/
+npm run preview    # serve dist/ on :5173
+npm run typecheck  # strict TypeScript, no output
+npm test           # Vitest logic tests in src/**/*.test.ts
+npm run test:e2e   # Playwright browser tests in tests/e2e, on the demo backend
 ```
 
-There is **no test suite, linter, or formatter** configured. `src/main.js` ends
-by exposing `window.__ccc` (camera, controls, scene, world, avatar, keys,
-`mode`, `game`, `setView`, `selectLocation`, `stepWalk`, `stepCamera`,
-`floorHeight`, `online`, `stick`, `profile`, …) specifically so a browser-driven harness can step the
-simulation deterministically — use that hook if you add automated checks.
+Vitest stays on 3.x because later versions exclude Node 23, which this machine
+runs. Playwright uses the installed Chrome with software WebGL, and starts its
+own server on :5174. There is no linter or formatter.
+
+In development only, `window.__ccc` is the live `CampusScene`. Browser tests use
+it to step the simulation deterministically (`walk.update`, `follow.update`).
+It does not exist in production builds.
 
 Note: the user-level `/implement-features` skill describes a different project
-(Next.js + Supabase + Jest + TypeScript). Its stack-specific instructions do not
-apply here; this is plain ES modules with no build-time type checking.
+(Next.js + Supabase + Jest). Its stack-specific instructions do not apply here.
 
 ## Layout
 
-| File | Role |
+| Path | Role |
 |---|---|
-| `index.html` | All DOM. Every panel, dialog, and HUD element is static markup with an `id`; JS only fills and toggles them. |
-| `src/data.js` | **All content and all campus geometry constants.** Floor plans, locations, quizzes, badges, camera views, themes, colliders, floor-height functions. |
-| `src/world.js` | Procedural geometry. Builds the ground, three buildings, the walk-in lobby, floor-plan meshes, the flag, and the blocky student figures. |
-| `src/main.js` | Everything else: renderer, orbit/pano/walk modes, labels, cards, passport state, themes, layer toggles, picking, the render loop. |
-| `src/backend.js` | Accounts and presence behind one interface: Supabase when configured, or a local demo in `npm run dev`. |
-| `src/account.js` | Log in, register, and character customization screens. |
-| `src/online.js` | Other logged-in students: figures, interpolation, name bubbles. |
+| `index.html` | Page shell with the author and copyright meta tags. All other markup is in React. |
+| `src/main.tsx`, `src/App.tsx` | Entry point and routes: the campus at `/`, and the lazy admin page at `/admin`. |
+| `src/components/` | React UI: `campus/`, `passport/`, `account/`, `admin/`, `common/`. |
+| `src/hooks/` | React state and effects, including `useCampusScene`, `useAuth`, and `useCampusPresence`. |
+| `src/scene/` | Imperative Three.js with no React. `CampusScene` owns the renderer, the render loop, and `dispose()`. |
+| `src/scene/world/` | Procedural geometry: ground, three buildings, walk-in lobby, floor plans, and the `Batch` class. |
+| `src/scene/characters/figure.ts` | The blocky student figures. |
+| `src/utils/campusData.ts` | **All content.** Floor plans, locations, quizzes, badges, camera views, themes, swatches. |
+| `src/utils/physics.ts` | `COLLIDERS`, `floorHeight`, `cameraCeiling`, `indoorBounds`, `WALK_BOUNDS`. |
+| `src/utils/validation.ts` | `cleanProfile`, `cleanSettings`, and form validation. |
+| `src/utils/passport.ts`, `layers.ts` | Pure game and layer rules, with tests beside them. |
+| `src/utils/backend/` | Accounts and presence behind one interface: Supabase when configured, or a local demo in `npm run dev`. |
+| `src/types/` | Shared TypeScript types. |
+| `src/styles/` | `campus.css` and `account.css` load with the campus. `admin.css` loads with the admin page. |
 | `supabase/migrations/` | Append-only database changes. Apply in the Supabase SQL editor or with `supabase db push`. |
-| `src/style.css` | Single stylesheet, CSS custom properties in `:root`. |
-| `admin.html`, `src/admin.js`, `src/admin.css` | Role-protected admin page: dashboard, users, and site settings. |
-| `supabase/functions/admin-users/` | Edge Function for account changes. The only code allowed to use `service_role`. |
+| `supabase/functions/admin-users/` | Edge Function for account changes. The only code allowed to use `service_role`. It runs on Deno, outside the app's TypeScript config. |
 | `public/panos/*.jpg` | The 12 original panoramas in use (of 52 available). |
 
 ## Conventions that matter
+
+**React never runs per frame.** Keys, joystick, camera, player position, NPC
+matrices, and label positions stay in `src/scene`. The scene reports changes
+through `SceneEvents`, and React calls its methods. Labels, name bubbles, the
+compass, and the joystick knob are written through their `style` every frame.
+Never put that data in `useState`.
+
+**Everything the scene creates must be released.** React Strict Mode mounts twice
+in development. Listeners use the scene's `AbortSignal`, and new objects need a
+place in `CampusScene.dispose()`. Realtime joins and leaves run through a promise
+queue (see `useCampusPresence`), because the client reuses a channel that is
+still closing.
+
+**Each route brings its own global CSS.** The campus and admin stylesheets style
+the same elements differently, so links between them are plain `<a href>` full
+page loads, not router links. Hosting must serve `index.html` for `/admin`.
 
 **Content lives in data, not code.** This is the central rule carried over from
 the plan, and the fix for the original app's 3,286 lines of hand-wired
 navigation. Adding a location should mean one entry in `LOCATIONS` and nothing
 else — no new function, no new DOM. The same applies to `FLOORS`, `VIEWS`,
-`THEMES`, `BADGES`, and the layer `toggles` list in `main.js`: they are rendered
-by mapping over the array.
+`THEMES`, `BADGES`, and `LAYERS` in `utils/layers.ts`: they are rendered by
+mapping over the array.
 
 **The coordinate system is metres on a local grid rotated ~25° from true
 north** (`NORTH_YAW_DEG`). `x` runs roughly east, `z` roughly south, `y` up.
@@ -78,24 +103,26 @@ copy, and do not present them as measured.
 positions prefer `centre('floor', 'Room Name')` over literals so a plan refit
 moves them automatically.
 
-**Geometry is batched.** `world.js` uses the `Batch` class: accumulate coloured
+**Geometry is batched.** `scene/world/` uses the `Batch` class: accumulate coloured
 boxes/cylinders/quads, then `build(material)` merges them into one
 `vertexColors` mesh. The draw-call budget is under 150, so new scenery belongs
 in an existing batch rather than as its own `Mesh`. Colours come from the `C`
-palette at the top of `world.js`. Students and vehicles are `InstancedMesh`.
+palette in `scene/world/Batch.ts`. Students and vehicles are `InstancedMesh`.
 
 **Three sources of truth must stay in sync.** `COLLIDERS`, `floorHeight()`, and
-`cameraCeiling()` in `data.js` are hand-maintained to match the geometry built
-in `world.js`. If you move a wall, a step, or a ceiling in `world.js`, update
-the matching entry in `data.js` — the comments there mark which is which.
+`cameraCeiling()` in `utils/physics.ts` are hand-maintained to match the geometry
+built in `scene/world/`. If you move a wall, a step, or a ceiling there, update
+the matching entry in `utils/physics.ts` — the comments there mark which is which.
 
-**Modes are exclusive.** `mode` is `'orbit'`, `'pano'`, or walking
-(`walkActive`). The render loop early-returns for pano. Controls must stay
+**Modes are exclusive.** `CampusScene.mode` is `'orbit'`, `'pano'`, or `'walk'`,
+and `walking` stays true while a panorama opens from walking. The render loop
+early-returns for pano. Controls must stay
 frame-rate independent and clamped (fixing two named bugs in the original):
-multiply by `dt`, and respect `PITCH_MIN`/`PITCH_MAX`, `ZOOM_MIN`/`ZOOM_MAX`.
+multiply by `dt`, and respect `PITCH_MIN`/`PITCH_MAX`, `ZOOM_MIN`/`ZOOM_MAX`
+in `scene/FollowCamera.ts`.
 
 **Panoramas are stored mirrored** by the original app, so they are rendered on
-an unflipped sphere. Don't "fix" the winding without checking `openPano`.
+an unflipped sphere. Don't "fix" the winding without checking `scene/PanoViewer.ts`.
 
 Passport progress is `localStorage` under `ccc-campus-passport-v1`. Bump the key
 if the shape changes. Accounts, looks, and the passports-issued count live in
@@ -110,8 +137,8 @@ appears, investigate, write a note, then fix it.**
 
 ## Copyright
 
-`../COPYRIGHT.md` is the project's policy and `index.html` mirrors it in the
-legal dialog; the two must agree. Original code, the 3D model, and the Student
+`../COPYRIGHT.md` is the project's policy and
+`src/components/common/LegalDialog.tsx` mirrors it; the two must agree. Original code, the 3D model, and the Student
 Passport design are **© 2026 Manuel Kyd Thomas Nagpala, all rights reserved** —
 this is deliberately not open source. The 2022 tour's photos, panoramas, floor
 plans, and panel text belong to the original project group; the CCC name and

@@ -35,6 +35,8 @@ These are not claimed by this policy and remain with their respective owners:
 |---|---|
 | Original CCC Virtual Tour (2022) photos, panoramas, floor plans, and panel text | The original project group and any other rights holders |
 | City College of Calamba name, seal, uniform design, and campus | City College of Calamba and its relevant authorities |
+| React | MIT License, © Meta Platforms, Inc. and affiliates |
+| React Router | MIT License, © Remix Software Inc. and Shopify Inc. |
 | Three.js | MIT License, © three.js authors |
 | Vite | MIT License, © VoidZero Inc. and Vite contributors |
 | Supabase client library | MIT License, © Supabase |
