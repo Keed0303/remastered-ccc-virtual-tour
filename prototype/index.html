@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CCC Campus 3D</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <canvas id="scene" aria-label="3D model of City College of Calamba"></canvas>
+  <div id="labels" aria-hidden="false"></div>
+
+  <aside id="side" class="panel-dark">
+    <div class="brand"><span class="brand-mark">CCC</span><span>Campus 3D</span></div>
+    <p class="eyebrow">City College of Calamba · Prototype</p>
+    <h1>Explore the<br />campus in 3D.</h1>
+    <p class="lede">Earn your Student Passport by visiting the places that make up CCC.</p>
+    <nav id="views" aria-label="Views"></nav>
+    <div class="side-tools">
+      <button id="btn-walk" class="primary">Explore on foot</button>
+    </div>
+    <p class="hint" id="hint">Drag to rotate · Right-drag to pan · Scroll to zoom · Click a label</p>
+  </aside>
+
+  <section id="themes" aria-label="Time of day"></section>
+
+  <section id="passport" class="panel-light" aria-label="Student Passport">
+    <header>
+      <div>
+        <p class="eyebrow dark">Student Passport</p>
+        <strong id="level">Level 1 Freshman</strong>
+      </div>
+      <span id="xp">0 XP</span>
+    </header>
+    <div class="bar"><i id="xp-bar"></i></div>
+    <div id="stamps"></div>
+    <div id="badges"></div>
+    <button id="reset" class="link">Reset progress</button>
+  </section>
+
+  <section id="toggles" aria-label="Layers"></section>
+
+  <section id="stats" class="panel-light">
+    <p class="eyebrow dark">Model data (estimated)</p>
+    <dl>
+      <div><dt>Campus block</dt><dd>~65 × 140 m</dd></div>
+      <div><dt>Main buildings</dt><dd>3</dd></div>
+      <div><dt>Floors shown</dt><dd>5</dd></div>
+      <div><dt>360° photos here</dt><dd>12 of 52</dd></div>
+    </dl>
+    <p class="note">Layout estimated from satellite, Street View, and the original floor plans and photos. Not surveyed.</p>
+  </section>
+
+  <div id="compass" title="Approximate north"><i></i><span>N</span></div>
+
+  <article id="card" class="panel-light" hidden aria-live="polite">
+    <button id="card-close" aria-label="Close">✕</button>
+    <div id="card-photo"></div>
+    <div class="card-body">
+      <p class="eyebrow dark" id="card-kind"></p>
+      <h2 id="card-title"></h2>
+      <div id="card-text"></div>
+      <div id="card-actions"></div>
+      <div id="card-quiz"></div>
+    </div>
+  </article>
+
+  <div id="pano-ui" hidden>
+    <div class="pano-title"><strong id="pano-name"></strong><span>Drag to look · Scroll to zoom · Esc to exit</span></div>
+    <button id="pano-close" class="primary">Back to campus</button>
+  </div>
+
+  <div id="walk-ui" hidden>
+    <div class="keys"><b>W A S D</b> or arrows to walk · <b>Shift</b> to run · <b>E</b> to check in</div>
+    <div id="prompt" hidden></div>
+    <div class="walk-pad" aria-hidden="true">
+      <button data-k="KeyW">▲</button><button data-k="KeyA">◀</button><button data-k="KeyS">▼</button><button data-k="KeyD">▶</button>
+    </div>
+    <button id="walk-exit" class="primary">Exit walking</button>
+  </div>
+
+  <div id="tip" hidden></div>
+  <div id="toast" aria-live="polite"></div>
+  <div id="loading"><span>Building the campus…</span></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
