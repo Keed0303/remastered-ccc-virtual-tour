@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { DEFAULT_LOOK, HAIR_SWATCHES, SKIN_SWATCHES } from './utils/campusData';
 import { isHexColor, validateRegistration } from './utils/validation';
-import { createPlayerFigure, disposeFigure, setFigureLook } from './world.js';
+import { createPlayerFigure, disposeFigure, setFigureLook } from './scene/characters/figure';
 
 const $ = (id) => document.getElementById(id);
 

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { WALK_BOUNDS, floorHeight, indoorBounds } from './utils/physics';
 import { cleanProfile } from './utils/validation';
-import { createPlayerFigure, disposeFigure } from './world.js';
+import { createPlayerFigure, disposeFigure } from './scene/characters/figure';
 
 const MAX_VISIBLE = 20;
 const BUBBLE_RANGE = 70;

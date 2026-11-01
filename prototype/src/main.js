@@ -6,7 +6,8 @@ import { createOnline } from './online.js';
 import { BADGES, BUILDING_LABELS, FLOORS, LOCATIONS, DEFAULT_LOOK, NPC_MAX, NORTH_YAW_DEG, RANKS, THEMES, VIEWS } from './utils/campusData';
 import { COLLIDERS, WALK_BOUNDS, cameraCeiling, floorHeight, indoorBounds } from './utils/physics';
 import { cleanSettings } from './utils/validation';
-import { FIGURE, buildWorld, createAvatar, setFigureLook, figureArm, figureBody, figureLeg } from './world.js';
+import { buildWorld } from './scene/world/buildWorld';
+import { FIGURE, createAvatar, setFigureLook, figureArm, figureBody, figureLeg } from './scene/characters/figure';
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('scene');
@@ -832,7 +833,7 @@ renderer.setAnimationLoop(() => {
   }
   updateWalkers(dt, time);
   updateTraffic(dt);
-  world.flag.userData.wave(time);
+  world.flag.wave(time);
   online.update(dt);
   sendPosition(time);
   camera.getWorldDirection(camDir);
