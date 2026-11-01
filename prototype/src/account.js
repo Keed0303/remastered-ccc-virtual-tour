@@ -1,18 +1,10 @@
 // Log in, register, and character customization screens.
 import * as THREE from 'three';
-import { DEFAULT_LOOK, HAIR_SWATCHES, SKIN_SWATCHES, isHexColor } from './data.js';
+import { DEFAULT_LOOK, HAIR_SWATCHES, SKIN_SWATCHES } from './utils/campusData';
+import { isHexColor, validateRegistration } from './utils/validation';
 import { createPlayerFigure, disposeFigure, setFigureLook } from './world.js';
 
 const $ = (id) => document.getElementById(id);
-
-export function validateRegistration({ name, email, password, confirm, gender }) {
-  if (name.trim().length < 2 || name.trim().length > 24) return 'Enter a name between 2 and 24 characters.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return 'Enter a valid email address.';
-  if (password.length < 8) return 'Use a password with at least 8 characters.';
-  if (password !== confirm) return 'The passwords do not match.';
-  if (gender !== 'female' && gender !== 'male') return 'Choose Female or Male for your character.';
-  return null;
-}
 
 export function createAccountUI({ backend, getProfile, onSignedIn, onSignedOut, onLookSaved }) {
   const dialog = $('account-dialog');

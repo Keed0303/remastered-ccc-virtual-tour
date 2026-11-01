@@ -1,6 +1,7 @@
 // Admin page. The server enforces every permission. This check only decides what to show.
-import { createBackend } from './backend.js';
-import { DEFAULT_LOOK, DEFAULT_SETTINGS, NPC_MAX, cleanSettings, isHexColor } from './data.js';
+import { createBackend } from './utils/backend';
+import { DEFAULT_LOOK, DEFAULT_SETTINGS, NPC_MAX } from './utils/campusData';
+import { cleanSettings, isHexColor } from './utils/validation';
 
 const $ = (id) => document.getElementById(id);
 let backend = null;

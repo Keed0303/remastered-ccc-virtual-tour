@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { FLOORS } from './data.js';
+import { FLOORS } from './utils/campusData';
 
 const C = {
   white: '#f3f4f2', cream: '#ece7db', blue: '#1f62b8', blueDk: '#174a8c', sky: '#4b8fd6', roof: '#3f6db5', roofDk: '#5a7192',

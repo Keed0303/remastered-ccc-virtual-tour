@@ -1,18 +1,25 @@
+import type { SiteSettings } from '../types/backend';
+import type { BuildingLabel, FloorDef, FloorKey, LocationDef, Rect, Room, RoomKind, ThemeDef, Vec3, ViewDef } from '../types/campus';
+import type { Look, Swatch } from '../types/character';
+import type { Badge } from '../types/game';
+
 // Campus coordinates are metres on a local grid rotated about 25 degrees from north.
 // x runs roughly east, z runs roughly south. Estimated, not surveyed.
 export const NORTH_YAW_DEG = 25;
 
 // Footprints that the original floor plan images are fitted onto.
-export const FOOT = {
+export const FOOT: { old: Rect; new: Rect } = {
   old: { x0: -5, x1: 57, z0: -38, z1: 6 },
   new: { x0: 0, x1: 44, z0: 52, z1: 90 },
 };
 
-const OB_GF_MAP = [717, 55, 1337, 590];
-const SMALL_MAP = [431, 33, 803, 353];
+type PlanRect = [number, number, number, number];
+
+const OB_GF_MAP: PlanRect = [717, 55, 1337, 590];
+const SMALL_MAP: PlanRect = [431, 33, 803, 353];
 
 // The Old Building plan is rotated 180 degrees so its lobby faces the plaza.
-function oldRect([ax, ay, bx, by], [mx0, my0, mx1, my1]) {
+function oldRect([ax, ay, bx, by]: PlanRect, [mx0, my0, mx1, my1]: PlanRect): Rect {
   const f = FOOT.old;
   const W = f.x1 - f.x0, D = f.z1 - f.z0;
   const u0 = (ax - mx0) / (mx1 - mx0), u1 = (bx - mx0) / (mx1 - mx0);
@@ -21,7 +28,7 @@ function oldRect([ax, ay, bx, by], [mx0, my0, mx1, my1]) {
 }
 
 // The New Building plan is rotated so its lobby faces S.V. Rizal St (assumption).
-function newRect([ax, ay, bx, by]) {
+function newRect([ax, ay, bx, by]: PlanRect): Rect {
   const f = FOOT.new;
   const [mx0, my0, mx1, my1] = SMALL_MAP;
   const W = f.x1 - f.x0, D = f.z1 - f.z0;
@@ -30,11 +37,11 @@ function newRect([ax, ay, bx, by]) {
   return { x0: f.x0 + (1 - v1) * W, x1: f.x0 + (1 - v0) * W, z0: f.z0 + u0 * D, z1: f.z0 + u1 * D };
 }
 
-const obgf = (n, k, r) => ({ n, k, ...oldRect(r, OB_GF_MAP) });
-const oblg = (n, k, r) => ({ n, k, ...oldRect(r, SMALL_MAP) });
-const nb = (n, k, r) => ({ n, k, ...newRect(r) });
+const obgf = (n: string, k: RoomKind, r: PlanRect): Room => ({ n, k, ...oldRect(r, OB_GF_MAP) });
+const oblg = (n: string, k: RoomKind, r: PlanRect): Room => ({ n, k, ...oldRect(r, SMALL_MAP) });
+const nb = (n: string, k: RoomKind, r: PlanRect): Room => ({ n, k, ...newRect(r) });
 
-export const FLOORS = {
+export const FLOORS: Record<FloorKey, FloorDef> = {
   ob_gf: {
     name: 'Old Building · Ground Floor', building: 'old', foot: FOOT.old,
     rooms: [
@@ -100,13 +107,13 @@ export const FLOORS = {
   },
 };
 
-const centre = (floor, name) => {
-  const r = FLOORS[floor].rooms.find((room) => room.n === name);
+const centre = (floor: FloorKey, name: string): Vec3 => {
+  const r = FLOORS[floor].rooms.find((room) => room.n === name)!;
   return [(r.x0 + r.x1) / 2, 1.2, (r.z0 + r.z1) / 2];
 };
 
 // Panel text comes from the original tour, lightly trimmed and with typos corrected.
-export const LOCATIONS = [
+export const LOCATIONS: LocationDef[] = [
   {
     id: 'flagpole', name: 'Flagpole Plaza', kind: 'Rizal Plaza', floor: null, pos: [34, 2, -105], pano: 'panos/flagpole.jpg',
     text: ['The first stop of the original tour. The plaza leads past the Rizal Monument to the front of the college, which was once the Old City Hall of Calamba.'],
@@ -168,7 +175,7 @@ export const LOCATIONS = [
   },
 ];
 
-export const BADGES = [
+export const BADGES: Badge[] = [
   { id: 'first', name: 'First Step', icon: '👣', test: (s) => s.stamps.length >= 1 },
   { id: 'old', name: 'Old Building Explorer', icon: '🏛️', test: (s) => ['entrance', 'lobby', 'lazaro', 'cashier', 'gazebo', 'aquarium'].every((i) => s.stamps.includes(i)) },
   { id: 'new', name: 'New Building Explorer', icon: '🏫', test: (s) => ['nb-lobby', 'comlab', 'library', 'avr'].every((i) => s.stamps.includes(i)) },
@@ -178,7 +185,7 @@ export const BADGES = [
 
 export const RANKS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
 
-export const VIEWS = [
+export const VIEWS: ViewDef[] = [
   { id: 'overview', name: 'Campus overview', cam: [-118, 128, -112], target: [26, 0, -12] },
   { id: 'plaza', name: 'Rizal Plaza', cam: [-30, 38, -136], target: [28, 2, -78] },
   { id: 'ob_lg', name: 'Old Building · Lower Ground', floor: 'ob_lg', cam: [26, 88, 40], target: [26, 0, -16] },
@@ -188,103 +195,31 @@ export const VIEWS = [
   { id: 'nb_3', name: 'New Building · 3rd Floor', floor: 'nb_3', cam: [22, 58, 124], target: [22, 0, 72] },
 ];
 
-export const THEMES = [
+export const THEMES: ThemeDef[] = [
   { id: 'day', name: 'Day', sky: '#cfe3f1', fog: '#dbe8f1', sun: '#fff4e0', sunI: 3.0, hemi: 1.15, hemiG: '#c5ccc4', pos: [-70, 130, -60], glow: 0, lamps: 0 },
   { id: 'gold', name: 'Golden hour', sky: '#f4c9a0', fog: '#f1d4b8', sun: '#ffb26b', sunI: 3.1, hemi: 0.8, hemiG: '#b49a8b', pos: [-120, 48, 40], glow: 0.35, lamps: 0.8 },
   { id: 'night', name: 'Night', sky: '#0f1a2e', fog: '#121e33', sun: '#9fb6e8', sunI: 0.75, hemi: 0.42, hemiG: '#1b2438', pos: [60, 110, -70], glow: 1.5, lamps: 3 },
 ];
 
-// Solid footprints used for on-foot collisions.
-export const COLLIDERS = [
-  // Old Building exterior. The door gap between x 21.7 and 26.3 stays open.
-  { x0: -4, x1: 10, z0: -39, z1: -24 }, { x0: 38, x1: 52, z0: -39, z1: -24 }, { x0: 10, x1: 21.7, z0: -39.6, z1: -37.4 },
-  { x0: 26.3, x1: 38, z0: -39.6, z1: -37.4 }, { x0: 3.5, x1: 14.2, z0: -50, z1: -39, top: 3 }, { x0: 33.8, x1: 44.5, z0: -50, z1: -39, top: 3 },
-  { x0: 15.7, x1: 16.9, z0: -45.2, z1: -44, top: 0 }, { x0: 31.1, x1: 32.3, z0: -45.2, z1: -44, top: 0 },
-  { x0: -5, x1: 10, z0: -24, z1: 6 }, { x0: 38, x1: 57, z0: -24, z1: -16 }, { x0: 46, x1: 57, z0: -16, z1: 6 }, { x0: 10, x1: 46, z0: -5, z1: 6 }, { x0: 38, x1: 40, z0: -16, z1: -5 },
-  // Lobby walls, corridors, stage, and furniture.
-  { x0: 16.5, x1: 21.3, z0: -20, z1: -5 }, { x0: 26.7, x1: 31.5, z0: -20, z1: -5 }, { x0: 10, x1: 13.5, z0: -20, z1: -5 }, { x0: 34.5, x1: 38, z0: -20, z1: -5 },
-  { x0: 21, x1: 27, z0: -15.5, z1: -5 }, { x0: 13.5, x1: 16.5, z0: -6, z1: -5 }, { x0: 31.5, x1: 34.5, z0: -6, z1: -5 },
-  { x0: 19.6, x1: 21.3, z0: -22.2, z1: -19.7, top: 3.2 }, { x0: 26.7, x1: 28.4, z0: -22.2, z1: -19.7, top: 3.2 },
-  { x0: 10, x1: 16.3, z0: -24.5, z1: -23.4, top: 2.9 }, { x0: 10, x1: 11.4, z0: -23.4, z1: -20, top: 2.9 }, { x0: 33.5, x1: 37.8, z0: -25, z1: -22.4, top: 2.7 }, { x0: 31.8, x1: 33, z0: -22.6, z1: -21.5, top: 3.3 },
-  { x0: 21.5, x1: 21.9, z0: -37.4, z1: -35.1, top: 0 }, { x0: 26.1, x1: 26.5, z0: -37.4, z1: -35.1, top: 0 },
-  // Other buildings and landmarks.
-  { x0: 0, x1: 47, z0: 6, z1: 50 }, { x0: 0, x1: 44, z0: 52, z1: 90 }, { x0: 49.5, x1: 57.5, z0: 8, z1: 48 }, { x0: 46, x1: 57.5, z0: 52, z1: 88 },
-  { x0: 4, x1: 30, z0: 90, z1: 94, top: 3.3 }, { x0: 53, x1: 66, z0: -92, z1: -74 }, { x0: 28.4, x1: 39.6, z0: -79.6, z1: -68.4, top: 3 },
-];
-
-// Height of the walkable surface at a point. This matches the steps built in world.js.
-export function floorHeight(x, z) {
-  if (x >= 14.2 && x <= 33.8 && z >= -50 && z < -45.94) return (1.5 * (Math.floor((z + 50) / 0.58) + 1)) / 8;
-  if (x >= 14.2 && x <= 33.8 && z >= -45.94 && z < -38) return 1.5;
-  if (x >= 10 && x <= 38 && z >= -38 && z <= -5) {
-    if (x >= 21.3 && x <= 26.7 && z >= -22.2 && z < -19.2) return 1.84 + 0.17 * (Math.floor((z + 22.2) / 0.5) + 1);
-    if (x >= 21.3 && x <= 26.7 && z >= -19.2) return 2.86;
-    if (x >= 16 && x <= 32 && z >= -25 && z < -20) return 1.84;
-    if (x >= 15 && x <= 33 && z >= -26 && z < -20) return 1.67;
-    return 1.5;
-  }
-  if (x >= 18 && x <= 50 && z >= -125 && z < -58) return 0.1;
-  return 0;
-}
-
-// The highest the third-person camera may go at a point, so it stays under ceilings.
-export function cameraCeiling(x, z) {
-  if (x >= 15.5 && x <= 32.5 && z >= -46.2 && z < -38) return 6;
-  if (x >= 10 && x <= 38 && z >= -38 && z <= -5) {
-    if (z >= -20) {
-      if (x < 17 || x > 31) return 4.15;
-      return 5.6;
-    }
-    return 5.65;
-  }
-  return Infinity;
-}
-
-// True when a point is inside the lobby or its corridors.
-export function indoorBounds(x, z) {
-  return z >= -38.2 && z <= -5 && x >= 10 && x <= 38;
-}
-export const WALK_BOUNDS = { x0: -16, x1: 66, z0: -124, z1: 101 };
-
 // Character looks. Colours from other users always pass through cleanProfile first.
-export const SKIN_SWATCHES = [
+export const SKIN_SWATCHES: Swatch[] = [
   { name: 'Fair', value: '#f3cfb3' }, { name: 'Light', value: '#e8b995' }, { name: 'Tan', value: '#e0ac84' },
   { name: 'Morena', value: '#c98d63' }, { name: 'Kayumanggi', value: '#a96f48' }, { name: 'Deep', value: '#7c4f33' },
 ];
-export const HAIR_SWATCHES = [
+export const HAIR_SWATCHES: Swatch[] = [
   { name: 'Black', value: '#17120e' }, { name: 'Dark brown', value: '#2a2118' }, { name: 'Brown', value: '#5a3a22' },
   { name: 'Auburn', value: '#7d3a1e' }, { name: 'Blonde', value: '#c9a24d' }, { name: 'Gray', value: '#9a9a9a' },
   { name: 'Blue', value: '#1f62b8' }, { name: 'Pink', value: '#d65b94' },
 ];
-export const DEFAULT_LOOK = { gender: 'male', skin: '#e0ac84', hair: '#2a2118' };
+export const DEFAULT_LOOK: Look = { gender: 'male', skin: '#e0ac84', hair: '#2a2118' };
 
-export const isHexColor = (value) => typeof value === 'string' && /^#[0-9a-fA-F]{6}$/.test(value);
-
-export function cleanProfile(raw) {
-  if (!raw || typeof raw.id !== 'string' || !raw.id) return null;
-  const name = typeof raw.name === 'string' ? raw.name.trim().slice(0, 24) : '';
-  return {
-    id: raw.id.slice(0, 64),
-    name: name.length >= 2 ? name : 'Student',
-    gender: raw.gender === 'female' ? 'female' : 'male',
-    skin: isHexColor(raw.skin) ? raw.skin : DEFAULT_LOOK.skin,
-    hair: isHexColor(raw.hair) ? raw.hair : DEFAULT_LOOK.hair,
-  };
-}
+// Labels for whole buildings, shown alongside the location labels.
+export const BUILDING_LABELS: BuildingLabel[] = [
+  { id: '_old', name: 'Old Building', pos: [14, 13, -14], view: 'ob_gf', big: true },
+  { id: '_new', name: 'New Building (JMC)', pos: [22, 22, 71], view: 'nb_1', big: true },
+  { id: '_hall', name: 'CCC Blue-Roof Building', pos: [24, 17, 28], big: true, note: 'Part of CCC. Its rooms are not mapped in this sample yet.' },
+];
 
 // Site-wide settings that admins control.
 export const NPC_MAX = 200;
-export const DEFAULT_SETTINGS = { showWireframe: true, showStudents: true, showVehicles: true, showLabels: true, npcCount: 46 };
-
-export function cleanSettings(raw) {
-  const s = raw || {};
-  const flag = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
-  const npc = Number(s.npcCount);
-  return {
-    showWireframe: flag(s.showWireframe, DEFAULT_SETTINGS.showWireframe),
-    showStudents: flag(s.showStudents, DEFAULT_SETTINGS.showStudents),
-    showVehicles: flag(s.showVehicles, DEFAULT_SETTINGS.showVehicles),
-    showLabels: flag(s.showLabels, DEFAULT_SETTINGS.showLabels),
-    npcCount: Number.isFinite(npc) ? Math.min(NPC_MAX, Math.max(0, Math.round(npc))) : DEFAULT_SETTINGS.npcCount,
-  };
-}
+export const DEFAULT_SETTINGS: SiteSettings = { showWireframe: true, showStudents: true, showVehicles: true, showLabels: true, npcCount: 46 };

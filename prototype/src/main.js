@@ -1,9 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createAccountUI } from './account.js';
-import { createBackend } from './backend.js';
+import { createBackend } from './utils/backend';
 import { createOnline } from './online.js';
-import { BADGES, COLLIDERS, FLOORS, LOCATIONS, cameraCeiling, DEFAULT_LOOK, cleanSettings, floorHeight, indoorBounds, NPC_MAX, NORTH_YAW_DEG, RANKS, THEMES, VIEWS, WALK_BOUNDS } from './data.js';
+import { BADGES, BUILDING_LABELS, FLOORS, LOCATIONS, DEFAULT_LOOK, NPC_MAX, NORTH_YAW_DEG, RANKS, THEMES, VIEWS } from './utils/campusData';
+import { COLLIDERS, WALK_BOUNDS, cameraCeiling, floorHeight, indoorBounds } from './utils/physics';
+import { cleanSettings } from './utils/validation';
 import { FIGURE, buildWorld, createAvatar, setFigureLook, figureArm, figureBody, figureLeg } from './world.js';
 
 const $ = (id) => document.getElementById(id);
@@ -290,11 +292,6 @@ $('views').replaceChildren(...VIEWS.map((v) => {
 }));
 
 /* ---------- Floating labels ---------- */
-const buildingLabels = [
-  { id: '_old', name: 'Old Building', pos: [14, 13, -14], view: 'ob_gf', big: true },
-  { id: '_new', name: 'New Building (JMC)', pos: [22, 22, 71], view: 'nb_1', big: true },
-  { id: '_hall', name: 'CCC Blue-Roof Building', pos: [24, 17, 28], big: true, note: 'Part of CCC. Its rooms are not mapped in this sample yet.' },
-];
 const labels = [];
 function addLabel(def, onclick) {
   const el = document.createElement('button');
@@ -305,7 +302,7 @@ function addLabel(def, onclick) {
   labels.push({ def, el, v: new THREE.Vector3(...def.pos) });
 }
 LOCATIONS.forEach((l) => addLabel(l, () => selectLocation(l.id, true)));
-buildingLabels.forEach((b) => addLabel(b, () => (b.view ? setView(b.view) : toast(b.note))));
+BUILDING_LABELS.forEach((b) => addLabel(b, () => (b.view ? setView(b.view) : toast(b.note))));
 let labelsOn = true;
 function refreshLabels() {
   const floor = VIEWS.find((v) => v.id === currentView)?.floor || null;

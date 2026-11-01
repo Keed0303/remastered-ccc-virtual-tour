@@ -1,6 +1,7 @@
 // Other logged-in students: their figures, smooth movement, and name bubbles.
 import * as THREE from 'three';
-import { DEFAULT_LOOK, WALK_BOUNDS, cleanProfile, floorHeight, indoorBounds } from './data.js';
+import { WALK_BOUNDS, floorHeight, indoorBounds } from './utils/physics';
+import { cleanProfile } from './utils/validation';
 import { createPlayerFigure, disposeFigure } from './world.js';
 
 const MAX_VISIBLE = 20;
@@ -145,4 +146,3 @@ export function createOnline({ scene, camera, canvas, avatar, bubbleRoot, isWalk
   };
 }
 
-export { DEFAULT_LOOK };
