@@ -120,6 +120,8 @@ function Campus() {
   const toggleLayer = (id: LayerId) => setLayers((state) => ({ ...state, [id]: { ...state[id], on: !state[id].on } }));
   const openAccount = () => {
     if (backend) setAccountOpen(true);
+    else if (status === 'loading') toast('Accounts are still loading. Please try again in a moment.');
+    else if (status === 'error') toast('Accounts could not load. Please check your connection and reload.');
     else toast('Accounts are not set up on this site yet.');
   };
 
