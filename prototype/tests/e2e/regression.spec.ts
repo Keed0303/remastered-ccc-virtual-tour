@@ -257,6 +257,44 @@ test('admin: gate, users, settings, and live updates on the campus', async ({ co
   expect(adminErrors).toEqual([]);
 });
 
+test('admin sidebar: fixed on wide screens, a drawer on phones', async ({ page }) => {
+  await openCampus(page);
+  await register(page, 'Head Admin', 'admin@example.test');
+  await page.goto('/admin?demo');
+  await expect(page.locator('#app')).toBeVisible();
+
+  const side = page.locator('#sidebar');
+  await expect(side).toBeVisible();
+  expect((await side.boundingBox())!.x).toBe(0);
+  await expect(page.locator('.mobile-bar')).toBeHidden();
+  await expect(page.locator('#tabs button[aria-current="page"]')).toHaveText('Dashboard');
+  await page.locator('#tabs button', { hasText: 'Users' }).click();
+  await expect(page.locator('#tabs button[aria-current="page"]')).toHaveText('Users');
+  await expect(page.locator('#user-new')).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(side).toBeHidden();
+  await expect(page.locator('.mobile-bar')).toContainText('Users');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.locator('#sidebar-open').click();
+  await expect(side).toBeVisible();
+  await page.locator('#tabs button', { hasText: 'Settings' }).click();
+  await expect(side).toBeHidden();
+  await expect(page.locator('.mobile-bar')).toContainText('Settings');
+  await expect(page.locator('#settings-form')).toBeVisible();
+
+  await page.locator('#sidebar-open').click();
+  await expect(side).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(side).toBeHidden();
+
+  await page.locator('#sidebar-open').click();
+  await expect(page.locator('#sidebar-backdrop')).toBeVisible();
+  await page.locator('#sidebar-backdrop').click({ position: { x: 370, y: 400 } });
+  await expect(side).toBeHidden();
+});
+
 test('a student is refused by the admin page', async ({ context }) => {
   const page = await context.newPage();
   await openCampus(page);

@@ -21,6 +21,7 @@ export function DashboardTab({ users, online }: { users: AdminUser[] | null; onl
       <ul id="online-list" className="online-list">
         {online?.map((u, i) => <li key={u.id ?? i}>{u.name.slice(0, 24)}</li>)}
       </ul>
+      <p id="online-empty" className="muted" hidden={online?.length !== 0}>No students are online right now.</p>
     </>
   );
 }

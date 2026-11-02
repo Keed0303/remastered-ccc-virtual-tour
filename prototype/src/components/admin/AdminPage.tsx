@@ -8,18 +8,17 @@ import type { Unsubscribe } from '../../types/backend';
 import type { Profile, PublicProfile } from '../../types/character';
 import { ToastProvider } from '../common/Toasts';
 import { AdminGate } from './AdminGate';
+import { AdminSidebar, TABS, type Tab } from './AdminSidebar';
 import { DashboardTab } from './DashboardTab';
 import { SettingsTab } from './SettingsTab';
 import { UsersTab } from './UsersTab';
-
-type Tab = 'dashboard' | 'users' | 'settings';
-const TABS: { id: Tab; name: string }[] = [{ id: 'dashboard', name: 'Dashboard' }, { id: 'users', name: 'Users' }, { id: 'settings', name: 'Settings' }];
 
 function Admin() {
   const toast = useToast();
   const { backend, profile, setProfile, status } = useAuth();
   const { users, load, clear } = useAdminUsers(backend);
   const [tab, setTab] = useState<Tab>('dashboard');
+  const [menuOpen, setMenuOpen] = useState(false);
   const [online, setOnline] = useState<PublicProfile[] | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
   const isAdmin = profile?.role === 'admin';
@@ -47,6 +46,13 @@ function Admin() {
     };
   }, [isAdmin, backend, load, toast]);
 
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
+
   const logOut = async () => {
     await backend?.signOut();
     clear();
@@ -59,16 +65,12 @@ function Admin() {
 
   return (
     <div id="app">
-      <header className="topbar">
-        <div className="brand"><span className="brand-mark">CCC</span><span>Campus Admin</span></div>
-        <nav id="tabs" aria-label="Admin sections">
-          {TABS.map((t) => <button key={t.id} data-tab={t.id} className={tab === t.id ? 'on' : undefined} onClick={() => setTab(t.id)}>{t.name}</button>)}
-        </nav>
-        <div className="me">
-          <span id="me-name">{profile.name}</span>
-          <a className="btn ghost small" href="/">Campus</a>
-          <button id="logout" className="btn ghost small" onClick={logOut}>Log out</button>
-        </div>
+      <AdminSidebar tab={tab} profile={profile} open={menuOpen} onTab={(id) => { setTab(id); setMenuOpen(false); }} onClose={() => setMenuOpen(false)} onLogOut={logOut} />
+      <header className="mobile-bar">
+        <button id="sidebar-open" aria-label="Open menu" aria-controls="sidebar" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <span>{TABS.find((t) => t.id === tab)?.name}</span>
       </header>
       <main>
         <p id="demo-banner" className="demo" hidden={backend.mode !== 'demo'}>Demo mode: changes stay in this browser and don't touch Supabase.</p>
