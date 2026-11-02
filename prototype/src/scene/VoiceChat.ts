@@ -63,6 +63,7 @@ export class VoiceChat {
   private onFoot = false;
   private _mic: MicState = 'off';
   private micRequest = 0;
+  private wantMic = false;
   private micStream: MediaStream | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private analyser: AnalyserNode | null = null;
@@ -117,6 +118,7 @@ export class VoiceChat {
     if (!connection) this.reset();
     this.connection = connection;
     this.lastSent = -10;
+    if (connection && this.wantMic) this.turnOnMic();
   }
 
   // Walking only. Leaving walking or opening a 360° photo turns the mic off.
@@ -126,10 +128,17 @@ export class VoiceChat {
     if (onFoot) {
       this.audio();
     } else {
+      this.wantMic = false;
       this.stopMic();
       this.closeAllLinks();
     }
     this.sendState();
+  }
+
+  // From Explore, which can come before the live campus connection is ready.
+  turnOnMic() {
+    this.wantMic = !this.connection;
+    if (this.connection && this._mic === 'off') void this.toggleMic();
   }
 
   async toggleMic() {

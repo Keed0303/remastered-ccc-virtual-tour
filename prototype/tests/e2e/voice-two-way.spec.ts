@@ -66,8 +66,12 @@ for (const firstMic of ['offerer', 'answerer', 'both'] as const) {
     const answerer = offerer === ana ? ben : ana;
     const first = firstMic === 'offerer' ? offerer : answerer;
     const second = first === ana ? ben : ana;
-    await first.locator('#btn-mic').click();
-    if (firstMic === 'both') await second.locator('#btn-mic').click();
+    // Explore turned both mics on. To test a mic joining a connection later, one goes off first.
+    if (firstMic !== 'both') {
+      await expect(second.locator('#btn-mic')).toHaveAttribute('data-mic', 'live');
+      await second.evaluate(() => (window.__ccc!.online.voice as unknown as { stopMic: () => void }).stopMic());
+      await expect(second.locator('#btn-mic')).toHaveAttribute('data-mic', 'off');
+    }
     await connected(ana);
     await connected(ben);
     if (firstMic !== 'both') {
@@ -96,7 +100,6 @@ test('a silent mic is named and gets a warning', async ({ context }) => {
   const page = await context.newPage();
   await join(page, 'Quiet Mic', 'quiet@example.test');
   await page.locator('#btn-walk').click();
-  await page.locator('#btn-mic').click();
   await expect(page.locator('.toast-item', { hasText: 'Mic on, using' })).toBeVisible();
   await expect(page.locator('.toast-item', { hasText: "If you're talking, no sound is reaching" })).toBeVisible({ timeout: 45_000 });
 });
@@ -106,7 +109,6 @@ test('a real mic is named, and does not get the silence warning', async ({ conte
   const page = await context.newPage();
   await join(page, 'Loud Mic', 'loud@example.test');
   await page.locator('#btn-walk').click();
-  await page.locator('#btn-mic').click();
   await expect(page.locator('.toast-item', { hasText: /Mic on, using .*Fake/i })).toBeVisible();
   await page.waitForTimeout(16_000);
   await expect(page.locator('.toast-item', { hasText: 'no sound is reaching' })).toHaveCount(0);
@@ -123,7 +125,6 @@ test('blocked sound asks for a tap, and a tap turns it back on', async ({ contex
     await page.locator('#btn-walk').click();
     await page.evaluate((pz) => window.__ccc!.avatar.position.set(30, 0.1, pz), z);
   }
-  await ana.locator('#btn-mic').click();
   await connected(ana);
   await connected(ben);
 

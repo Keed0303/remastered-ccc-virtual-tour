@@ -128,6 +128,7 @@ function Campus() {
     if (scene.walking) { scene.stopWalk(); return; }
     setSelected(null);
     scene.startWalk();
+    if (profile) scene.online.voice.turnOnMic();
   };
   const openPano = (l: LocationDef) => {
     setPanoName(l.name);

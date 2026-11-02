@@ -80,7 +80,7 @@ None. No tables, and the existing Realtime policies on the `campus` topic alread
 - **Direct connections reveal IP addresses.** Each connected student's browser sees the other's. Offers are also broadcast on the `campus` channel, so any logged-in student's browser receives them. A relay server would hide this.
 - **Google's public STUN server** sees each voice user's IP address while connecting.
 - **Signaling isn't authenticated per message.** A modified client could forge a voice message. Messages are size-checked, must come from someone online, and are only used by `RTCPeerConnection`, so they can't inject page content. This matches the risk already accepted for positions in the multiplayer devnote.
-- **Nothing opens the mic without a click,** and the browser asks permission the first time.
+- **The mic opens from a click on Explore on foot** (see the revision below), and the browser asks permission the first time.
 
 ## Test plan
 
@@ -105,6 +105,18 @@ A real STUN connection between two networks, real headsets, and iOS can't be tes
 ## Out of scope
 
 A TURN relay, push to talk, muting one other person, volume controls, stereo direction, walls blocking sound, moderation, and voice while not walking.
+
+---
+
+## Revision — 2026-11-02: mic turns on from Explore
+
+The project owner changed the earlier "off until clicked" decision. Clicking **Explore on foot** while logged in now asks for mic permission and turns the mic on.
+
+- **Logged-out visitors** still get no mic.
+- **After permission is given once,** the browser doesn't ask again, so the mic goes live on every Explore. The message naming the mic is the only sign, so students should know this before using it.
+- **Leaving walking still turns the mic off.** Closing a 360° photo doesn't turn it back on, because only Explore does. The button or M does.
+- **Clicking Explore just after logging in** can come before the live campus connection is ready. The request waits and runs once it is.
+- **A refused permission** shows the existing message each time Explore is clicked.
 
 ---
 

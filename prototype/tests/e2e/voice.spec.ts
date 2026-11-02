@@ -59,14 +59,9 @@ test('two students talk: connection, audio, icons, mute, range, and leaving', as
   await walkTo(a, 30, -110);
   await walkTo(b, 33, -110);
 
-  // Nobody's mic opens by itself, so there is no icon and no connection yet.
-  await expect(a.locator('#btn-mic')).toHaveAttribute('data-mic', 'off');
-  await expect(bubble(a, 'Ana Talks')).not.toHaveAttribute('data-voice', /.*/);
-  await expect(bubble(b, 'Ana Talks')).not.toHaveAttribute('data-voice', /.*/);
-  expect(await onlyLink(a)).toBeNull();
-
-  await a.locator('#btn-mic').click();
+  // Explore turns the mic on, without another click.
   await expect(a.locator('#btn-mic')).toHaveAttribute('data-mic', 'live');
+  await expect(b.locator('#btn-mic')).toHaveAttribute('data-mic', 'live');
   await expect(a.locator('.toast-item').last()).toContainText('Mic on');
   await expect(bubble(a, 'Ana Talks')).toHaveAttribute('data-voice', 'live');
 
@@ -74,7 +69,7 @@ test('two students talk: connection, audio, icons, mute, range, and leaving', as
   await expect.poll(() => onlyLink(a).then((l) => l?.status), { timeout: 40_000 }).toBe('connected');
   await expect.poll(() => onlyLink(b).then((l) => l?.status), { timeout: 40_000 }).toBe('connected');
   await expect(bubble(b, 'Ana Talks')).toHaveAttribute('data-voice', 'live', { timeout: 15_000 });
-  await expect(bubble(a, 'Ben Hears')).not.toHaveAttribute('data-voice', /.*/);
+  await expect(bubble(a, 'Ben Hears')).toHaveAttribute('data-voice', 'live', { timeout: 15_000 });
   await expect.poll(() => bytesReceived(b), { timeout: 20_000 }).toBeGreaterThan(1000);
   await expect.poll(() => onlyLink(b).then((l) => l?.volume ?? 0), { timeout: 10_000 }).toBeGreaterThan(0.9);
   await expect(bubble(b, 'Ana Talks')).toHaveClass(/speaking/, { timeout: 15_000 });
@@ -130,7 +125,6 @@ test('a connection that cannot open shows the failed icon', async ({ context }) 
   await expect(a.locator('#online-count')).toHaveText('2 online', { timeout: 15_000 });
   await walkTo(a, 30, -110);
   await walkTo(b, 33, -110);
-  await a.locator('#btn-mic').click();
   await expect(bubble(b, 'Ana Talks')).toHaveAttribute('data-voice', 'failed', { timeout: 45_000 });
   // The student's own mic still works, so their own icon stays green.
   await expect(bubble(a, 'Ana Talks')).toHaveAttribute('data-voice', 'live');
@@ -143,10 +137,23 @@ test('a blocked mic explains itself and stays off', async ({ page }) => {
   await openCampus(page);
   await register(page, 'No Mic', 'nomic@example.test');
   await walkTo(page, 30, -110);
-  await page.locator('#btn-mic').click();
   await expect(page.locator('.toast-item').last()).toContainText('Microphone access is blocked');
   await expect(page.locator('#btn-mic')).toHaveAttribute('data-mic', 'off');
   await expect(bubble(page, 'No Mic')).not.toHaveAttribute('data-voice', /.*/);
+});
+
+test('Explore right after a page reload still turns the mic on, and exit turns it off', async ({ page }) => {
+  await openCampus(page);
+  await register(page, 'Reload Mic', 'reload@example.test');
+  await page.reload();
+  await expect(page.locator('#loading')).toHaveCount(0, { timeout: 60_000 });
+  await expect(page.locator('#btn-account')).toHaveText('Reload Mic');
+  await page.locator('#btn-walk').click();
+  await expect(page.locator('#btn-mic')).toHaveAttribute('data-mic', 'live', { timeout: 15_000 });
+  await page.locator('#walk-exit').click();
+  expect(await page.evaluate(() => window.__ccc!.online.voice.mic)).toBe('off');
+  await page.locator('#btn-walk').click();
+  await expect(page.locator('#btn-mic')).toHaveAttribute('data-mic', 'live', { timeout: 15_000 });
 });
 
 test('a logged-out visitor gets no mic', async ({ page }) => {
