@@ -81,7 +81,8 @@ still closing.
 
 **Each route brings its own global CSS.** The campus and admin stylesheets style
 the same elements differently, so links between them are plain `<a href>` full
-page loads, not router links. Hosting must serve `index.html` for `/admin`.
+page loads, not router links. Hosting must serve `index.html` for `/admin`, which
+`vercel.json` does on Vercel. A new route needs a new line there.
 
 **Content lives in data, not code.** This is the central rule carried over from
 the plan, and the fix for the original app's 3,286 lines of hand-wired
