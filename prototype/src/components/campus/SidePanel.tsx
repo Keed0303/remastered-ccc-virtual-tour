@@ -22,7 +22,7 @@ export function SidePanel({ view, accountName, onView, onWalk, onAccount, onLega
         <button id="btn-account" className={`account-btn${accountName ? ' signed-in' : ''}`} onClick={onAccount}>{accountName ?? 'Log in / Register'}</button>
       </div>
       <p className="hint" id="hint">Drag to rotate · Right-drag to pan · Scroll to zoom · Click a label</p>
-      <button id="legal-link" className="legal-link" onClick={onLegal}>© 2026 Manuel Kyd Thomas Nagpala · Copyright</button>
+      <button id="legal-link" className="legal-link" onClick={onLegal}>© 2026 Kyd . Andrei . Dianne · Copyright</button>
     </aside>
   );
 }
