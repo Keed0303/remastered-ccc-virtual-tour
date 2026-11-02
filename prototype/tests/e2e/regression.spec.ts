@@ -19,7 +19,6 @@ async function register(page: Page, name: string, email: string) {
   await page.locator('#reg-name').fill(name);
   await page.locator('#reg-email').fill(email);
   await page.locator('#reg-password').fill('password123');
-  await page.locator('#reg-confirm').fill('password123');
   await page.locator('#reg-gender button[data-gender="female"]').click();
   await page.locator('#form-register button[type=submit]').click();
   await expect(page.locator('#char-preview')).toBeVisible();

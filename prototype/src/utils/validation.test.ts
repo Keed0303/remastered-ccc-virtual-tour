@@ -40,14 +40,13 @@ describe('cleanSettings', () => {
 });
 
 describe('validateRegistration', () => {
-  const good = { name: 'Ana', email: 'a@b.co', password: '12345678', confirm: '12345678', gender: 'female' as const };
+  const good = { name: 'Ana', email: 'a@b.co', password: '12345678', gender: 'female' as const };
   it('accepts a complete form', () => expect(validateRegistration(good)).toBeNull());
   it.each([
     [{ name: 'A' }, /name/i],
     [{ name: 'n'.repeat(25) }, /name/i],
     [{ email: 'nope' }, /email/i],
-    [{ password: 'short', confirm: 'short' }, /8 characters/],
-    [{ confirm: 'different' }, /do not match/],
+    [{ password: 'short' }, /8 characters/],
     [{ gender: null }, /Female or Male/],
   ])('refuses %j', (change, message) => {
     expect(validateRegistration({ ...good, ...change })).toMatch(message);

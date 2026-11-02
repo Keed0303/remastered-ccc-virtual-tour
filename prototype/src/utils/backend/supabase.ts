@@ -17,11 +17,12 @@ const fromSettingsRow = (row: SettingsRow): SiteSettings => ({ showWireframe: ro
 const toSettingsRow = (s: SiteSettings): SettingsRow => ({ show_wireframe: s.showWireframe, show_students: s.showStudents, show_vehicles: s.showVehicles, show_labels: s.showLabels, npc_count: s.npcCount, updated_at: new Date().toISOString() });
 const toRow = (p: Look & { name: string }) => ({ display_name: p.name, gender: p.gender, skin_color: p.skin, hair_color: p.hair });
 
-function friendlyError(error: { message?: string } | null) {
+export function friendlyError(error: { message?: string } | null) {
   const text = error?.message || '';
   if (/invalid login/i.test(text)) return 'That email or password is not correct.';
   if (/already registered|already exists/i.test(text)) return 'That email already has an account. Try logging in.';
   if (/email not confirmed/i.test(text)) return 'Please confirm your email first, using the link we sent you.';
+  if (/email rate limit/i.test(text)) return 'Too many sign-up emails were sent recently. Please try again later.';
   if (/rate limit|too many/i.test(text)) return 'Too many attempts. Please wait a moment and try again.';
   if (/password/i.test(text)) return text;
   return 'Something went wrong. Please check your connection and try again.';

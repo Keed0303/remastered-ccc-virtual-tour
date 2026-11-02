@@ -33,13 +33,12 @@ export function cleanSettings(raw: unknown): SiteSettings {
   };
 }
 
-export interface RegistrationForm { name: string; email: string; password: string; confirm: string; gender?: Gender | null }
+export interface RegistrationForm { name: string; email: string; password: string; gender?: Gender | null }
 
-export function validateRegistration({ name, email, password, confirm, gender }: RegistrationForm): string | null {
+export function validateRegistration({ name, email, password, gender }: RegistrationForm): string | null {
   if (name.trim().length < 2 || name.trim().length > 24) return 'Enter a name between 2 and 24 characters.';
   if (!isEmail(email.trim())) return 'Enter a valid email address.';
   if (password.length < 8) return 'Use a password with at least 8 characters.';
-  if (password !== confirm) return 'The passwords do not match.';
   if (gender !== 'female' && gender !== 'male') return 'Choose Female or Male for your character.';
   return null;
 }

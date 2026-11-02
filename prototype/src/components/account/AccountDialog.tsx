@@ -20,7 +20,7 @@ interface AccountDialogProps {
   onLookSaved: (profile: Profile) => void;
 }
 
-const NO_DETAILS: RegisterDetails = { name: '', email: '', password: '', confirm: '', gender: null };
+const NO_DETAILS: RegisterDetails = { name: '', email: '', password: '', gender: null };
 
 export function AccountDialog({ isOpen, backend, profile, onDismiss, onSignedIn, onSignedOut, onLookSaved }: AccountDialogProps) {
   const [step, setStep] = useState<Step>('login');
@@ -37,7 +37,7 @@ export function AccountDialog({ isOpen, backend, profile, onDismiss, onSignedIn,
   useEffect(() => {
     if (isOpen) { setStep(profile ? 'account' : 'login'); setError(''); }
     // Passwords never stay in memory after the dialog closes.
-    else setDetails((d) => ({ ...d, password: '', confirm: '' }));
+    else setDetails((d) => ({ ...d, password: '' }));
     // Only opening or closing resets the step, not a profile change while open.
   }, [isOpen]);
 
@@ -82,7 +82,7 @@ export function AccountDialog({ isOpen, backend, profile, onDismiss, onSignedIn,
       }
       const email = details.email.trim();
       const result = await backend.signUp({ email, password: details.password, profile: { name: details.name.trim(), ...look } });
-      setDetails((d) => ({ ...d, password: '', confirm: '' }));
+      setDetails((d) => ({ ...d, password: '' }));
       if (result.needsConfirm) {
         setConfirmEmail(email);
         show('confirm');

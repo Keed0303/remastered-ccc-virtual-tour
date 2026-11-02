@@ -2,7 +2,7 @@ import type { FormEvent } from 'react';
 import type { Gender } from '../../types/character';
 import { validateRegistration } from '../../utils/validation';
 
-export interface RegisterDetails { name: string; email: string; password: string; confirm: string; gender: Gender | null }
+export interface RegisterDetails { name: string; email: string; password: string; gender: Gender | null }
 
 interface RegisterFormProps {
   details: RegisterDetails;
@@ -27,7 +27,6 @@ export function RegisterForm({ details, onChange, onValid, onError, onLogin }: R
         <label>Name shown above your character<input id="reg-name" maxLength={24} autoComplete="nickname" required value={details.name} onChange={(e) => set({ name: e.target.value })} /></label>
         <label>Email<input id="reg-email" type="email" autoComplete="email" required value={details.email} onChange={(e) => set({ email: e.target.value })} /></label>
         <label>Password<input id="reg-password" type="password" autoComplete="new-password" required value={details.password} onChange={(e) => set({ password: e.target.value })} /></label>
-        <label>Confirm password<input id="reg-confirm" type="password" autoComplete="new-password" required value={details.confirm} onChange={(e) => set({ confirm: e.target.value })} /></label>
         <div className="field-label" id="gender-label">Gender</div>
         <div id="reg-gender" className="choice-row" role="group" aria-labelledby="gender-label">
           {(['female', 'male'] as const).map((g) => (
