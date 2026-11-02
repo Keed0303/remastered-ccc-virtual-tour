@@ -19,6 +19,7 @@ export interface SceneEvents {
   onSeatChange?: (state: SeatState) => void;
   onMicChange?: (state: MicState) => void;
   onMicError?: (message: string) => void;
+  onMicNotice?: (message: string) => void;
 }
 
 // DOM owned by React that the scene writes to every frame.

@@ -81,12 +81,14 @@ function Campus() {
     onSeatChange: setSeat,
     onMicChange: (state) => {
       setMicState(state);
+      if (state === 'off') micAnnounced.current = false;
       if (state === 'live' && !micAnnounced.current) {
         micAnnounced.current = true;
-        toast('Mic on. Students near you can hear you.');
+        toast(`Mic on, using ${createdScene.current?.online.voice.micLabel}. Students near you can hear you.`);
       }
     },
     onMicError: toast,
+    onMicNotice: toast,
     onCheckInKey: () => {
       createdScene.current?.follow.releaseMouse();
       checkInNearby(createdScene.current?.walk.nearby ?? null);

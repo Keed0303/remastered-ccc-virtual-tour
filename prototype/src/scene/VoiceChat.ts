@@ -10,6 +10,8 @@ const CONNECT_TIMEOUT = 20;
 const RETRY_AFTER_FAILURE = 20;
 const RETRY_AFTER_BYE = 6;
 const SPEAKING_SEND_GAP = 0.25;
+const SILENT_MIC_AFTER = 12;
+const SOUND_BLOCKED_AFTER = 3;
 
 const now = () => performance.now() / 1000;
 
@@ -17,6 +19,7 @@ export interface VoiceEvents {
   isPlayer: (id: string) => boolean;
   onMicChange?: (state: MicState) => void;
   onMicError?: (message: string) => void;
+  onMicNotice?: (message: string) => void;
 }
 export interface VoicePeerPlace { id: string; distance: number; sameSide: boolean }
 
@@ -65,6 +68,11 @@ export class VoiceChat {
   private analyser: AnalyserNode | null = null;
   private samples: Uint8Array<ArrayBuffer> | null = null;
   private lastLoud = -10;
+  private micOpenedAt = 0;
+  private micHeardSound = false;
+  private silenceWarned = false;
+  private blockedSince: number | null = null;
+  private blockedWarned = false;
   private speaking = false;
   private lastSent = -10;
   private ctx: AudioContext | null = null;
@@ -75,13 +83,15 @@ export class VoiceChat {
   constructor(events: VoiceEvents) {
     this.events = events;
     // Browsers only start audio after a click or key press.
-    const unlock = () => { if (this.ctx?.state === 'suspended') void this.ctx.resume(); };
+    const unlock = () => { if (this.ctx && this.ctx.state !== 'running' && this.ctx.state !== 'closed') void this.ctx.resume(); };
     const { signal } = this.listeners;
-    addEventListener('pointerdown', unlock, { signal });
-    addEventListener('keydown', unlock, { signal });
+    // On touch screens only the end of a tap counts as a user action.
+    for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) addEventListener(type, unlock, { signal });
   }
 
   get mic() { return this._mic; }
+  // The browser's name for the mic it opened, which may not be the one the student expects.
+  get micLabel() { return this.micStream?.getAudioTracks()[0]?.label || 'your microphone'; }
   get selfSpeaking() { return this.speaking; }
   get selfBadge(): VoiceBadge | null { return this._mic === 'live' ? 'live' : this._mic === 'muted' ? 'muted' : null; }
 
@@ -174,6 +184,7 @@ export class VoiceChat {
   update(places: VoicePeerPlace[]) {
     const time = now();
     this.measureMic(time);
+    this.checkSoundBlocked(time);
     this.expirePeers(time);
     if (this.connection && this.onFoot && time - this.lastSent > VOICE_STATE_EVERY) this.sendState();
     if (!this.onFoot) return;
@@ -216,6 +227,9 @@ export class VoiceChat {
 
   private useMic(stream: MediaStream) {
     this.micStream = stream;
+    this.micOpenedAt = now();
+    this.micHeardSound = false;
+    this.silenceWarned = false;
     const ctx = this.audio();
     this.micSource = ctx.createMediaStreamSource(stream);
     this.analyser = ctx.createAnalyser();
@@ -256,11 +270,34 @@ export class VoiceChat {
   private measureMic(time: number) {
     if (!this.analyser || !this.samples || this._mic !== 'live') return;
     this.analyser.getByteTimeDomainData(this.samples);
-    if (micLevel(this.samples) > SPEAK_LEVEL) this.lastLoud = time;
+    if (micLevel(this.samples) > SPEAK_LEVEL) {
+      this.lastLoud = time;
+      this.micHeardSound = true;
+    }
+    if (!this.micHeardSound && !this.silenceWarned && time - this.micOpenedAt > SILENT_MIC_AFTER) {
+      this.silenceWarned = true;
+      this.events.onMicNotice?.(`If you're talking, no sound is reaching ${this.micLabel}. Check that it isn't muted, or choose another mic in your browser's site settings.`);
+    }
     const speaking = time - this.lastLoud < SPEAK_HOLD;
     if (speaking !== this.speaking && time - this.lastSent > SPEAKING_SEND_GAP) {
       this.speaking = speaking;
       this.sendState();
+    }
+  }
+
+  // Sound is connected but the browser hasn't let it play, which looks like everyone being silent.
+  private checkSoundBlocked(time: number) {
+    const hasSound = [...this.links.values()].some((link) => link.status === 'connected');
+    if (!hasSound || !this.ctx || this.ctx.state === 'running') {
+      this.blockedSince = null;
+      this.blockedWarned = false;
+      return;
+    }
+    this.blockedSince ??= time;
+    if (!this.blockedWarned && time - this.blockedSince > SOUND_BLOCKED_AFTER) {
+      this.blockedWarned = true;
+      void this.ctx.resume();
+      this.events.onMicNotice?.('Tap or click anywhere to turn on voice sound.');
     }
   }
 

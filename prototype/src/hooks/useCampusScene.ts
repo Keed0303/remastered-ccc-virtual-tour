@@ -35,6 +35,7 @@ export function useCampusScene(refs: SceneRefs, events: SceneEvents) {
         onSeatChange: (...a) => latest.current.onSeatChange?.(...a),
         onMicChange: (...a) => latest.current.onMicChange?.(...a),
         onMicError: (...a) => latest.current.onMicError?.(...a),
+        onMicNotice: (...a) => latest.current.onMicNotice?.(...a),
       },
     );
     created.start();

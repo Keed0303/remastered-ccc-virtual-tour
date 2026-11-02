@@ -80,7 +80,7 @@ export class CampusScene {
     this.walk = new WalkController(avatar, () => this.follow.look.yaw, (l) => events.onNearbyChange?.(l), () => this.online.takenSeats(), (state) => events.onSeatChange?.(state));
     this.pano = new PanoViewer(renderer, canvas, () => this._mode === 'pano', signal);
     this.labels = new LabelProjector(elements.labels, camera, canvas);
-    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking, () => this.walk.seat, { onMicChange: (state) => events.onMicChange?.(state), onMicError: (message) => events.onMicError?.(message) });
+    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking, () => this.walk.seat, { onMicChange: (state) => events.onMicChange?.(state), onMicError: (message) => events.onMicError?.(message), onMicNotice: (message) => events.onMicNotice?.(message) });
     this.seatHint = new SeatHint(elements.bubbles, camera, canvas);
     enablePicking({
       canvas, camera, world: this.world, signal,
