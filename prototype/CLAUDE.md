@@ -33,7 +33,8 @@ npm run test:e2e   # Playwright browser tests in tests/e2e, on the demo backend
 ```
 
 Vitest stays on 3.x because later versions exclude Node 23, which this machine
-runs. Playwright uses the installed Chrome with software WebGL, and starts its
+runs. Playwright runs one test at a time, because software WebGL and two-student
+tests overload the CPU in parallel. It uses the installed Chrome with software WebGL, and starts its
 own server on :5174. There is no linter or formatter.
 
 In development only, `window.__ccc` is the live `CampusScene`. Browser tests use
@@ -57,7 +58,7 @@ Note: the user-level `/implement-features` skill describes a different project
 | `src/utils/campusData.ts` | **All content.** Floor plans, locations, quizzes, badges, camera views, themes, swatches. |
 | `src/utils/physics.ts` | `COLLIDERS`, `floorHeight`, `cameraCeiling`, `indoorBounds`, `WALK_BOUNDS`. |
 | `src/utils/validation.ts` | `cleanProfile`, `cleanSettings`, and form validation. |
-| `src/utils/passport.ts`, `layers.ts` | Pure game and layer rules, with tests beside them. |
+| `src/utils/passport.ts`, `layers.ts`, `voice.ts` | Pure game, layer, and voice rules, with tests beside them. |
 | `src/utils/backend/` | Accounts and presence behind one interface: Supabase when configured, or a local demo in `npm run dev`. |
 | `src/types/` | Shared TypeScript types. |
 | `src/styles/` | `campus.css` and `account.css` load with the campus. `admin.css` loads with the admin page. |
@@ -83,6 +84,13 @@ still closing.
 the same elements differently, so links between them are plain `<a href>` full
 page loads, not router links. Hosting must serve `index.html` for `/admin`, which
 `vercel.json` does on Vercel. A new route needs a new line there.
+
+**Voice travels directly between browsers.** `scene/VoiceChat.ts` sits under
+`OnlinePlayers` and uses WebRTC with STUN only, so strict networks show the amber
+icon. Signaling runs on the `campus` channel as the `voice` event, and every
+message goes through `cleanVoiceMessage`. Voice works on foot only: `setMode`
+turns it off in a panorama or when walking stops, which also keeps it clear of the
+render loop's panorama early return. See `devnote/2026-11-02-voice-talk.md`.
 
 **Content lives in data, not code.** This is the central rule carried over from
 the plan, and the fix for the original app's 3,286 lines of hand-wired

@@ -33,6 +33,7 @@ export function useCampusPresence(scene: CampusScene | null, backend: Backend | 
             latest.current.onUsersChanged();
           },
           onMove: (move) => { if (!stopped) scene.online.applyMove(move); },
+          onVoice: (message) => { if (!stopped) scene.online.voice.receive(message); },
           onError: () => latest.current.onError('Live campus connection was lost.'),
         });
         if (stopped) return;

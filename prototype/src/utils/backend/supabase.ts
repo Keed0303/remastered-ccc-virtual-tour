@@ -83,17 +83,19 @@ export async function supabaseBackend(url: string, key: string): Promise<Backend
       if (error) throw error;
       return Number(data);
     },
-    async joinCampus(profile, { onUsers, onMove, onError }) {
+    async joinCampus(profile, { onUsers, onMove, onVoice, onError }) {
       await client.realtime.setAuth();
       const channel = client.channel('campus', { config: { private: true, presence: { key: profile.id }, broadcast: { self: false } } });
       channel.on('presence', { event: 'sync' }, () => onUsers(onlineList(channel.presenceState())));
       channel.on('broadcast', { event: 'move' }, ({ payload }) => onMove(payload));
+      channel.on('broadcast', { event: 'voice' }, ({ payload }) => onVoice(payload));
       channel.subscribe((status) => {
         if (status === 'SUBSCRIBED') channel.track(publicProfile(profile));
         else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') onError?.(status);
       });
       return {
         sendMove: (move) => channel.send({ type: 'broadcast', event: 'move', payload: move }),
+        sendVoice: (message) => channel.send({ type: 'broadcast', event: 'voice', payload: message }),
         update: (next) => channel.track(publicProfile(next)),
         leave: () => client.removeChannel(channel),
       };

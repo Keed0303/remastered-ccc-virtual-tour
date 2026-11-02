@@ -1,10 +1,12 @@
-// Other logged-in students: their figures, smooth movement, and name bubbles.
+// Other logged-in students: their figures, smooth movement, name bubbles, and voice icons.
 import * as THREE from 'three';
 import type { CampusConnection, Move } from '../types/backend';
 import type { PublicProfile } from '../types/character';
+import type { VoiceBadge } from '../types/voice';
 import { WALK_BOUNDS, floorHeight, indoorBounds } from '../utils/physics';
 import { cleanProfile } from '../utils/validation';
 import { createPlayerFigure, disposeFigure, swingLimbs } from './characters/figure';
+import { VoiceChat, type VoiceEvents, type VoicePeerPlace } from './VoiceChat';
 
 const MAX_VISIBLE = 20;
 const BUBBLE_RANGE = 70;
@@ -16,6 +18,16 @@ function makeBubble(parent: HTMLElement, name: string, self = false) {
   el.textContent = name;
   parent.append(el);
   return el;
+}
+
+// The icon above the name is drawn in CSS from these. They change rarely, so writes are skipped.
+function setVoiceIcon(el: HTMLElement, badge: VoiceBadge | null, speaking: boolean) {
+  const voice = badge ?? '';
+  if ((el.dataset.voice ?? '') !== voice) {
+    if (badge) el.dataset.voice = badge;
+    else delete el.dataset.voice;
+  }
+  el.classList.toggle('speaking', speaking);
 }
 
 function spawnPoint(id: string): [number, number, number] {
@@ -31,6 +43,7 @@ interface Player { user: PublicProfile; fig: THREE.Group; bubble: HTMLElement; t
 
 export class OnlinePlayers {
   readonly players = new Map<string, Player>();
+  readonly voice: VoiceChat;
   private selfBubble: HTMLElement | null = null;
   private selfId: string | null = null;
   private proj = new THREE.Vector3();
@@ -44,13 +57,14 @@ export class OnlinePlayers {
   private bubbleRoot: HTMLElement;
   private isWalking: () => boolean;
 
-  constructor(scene: THREE.Scene, camera: THREE.Camera, canvas: HTMLCanvasElement, avatar: THREE.Object3D, bubbleRoot: HTMLElement, isWalking: () => boolean) {
+  constructor(scene: THREE.Scene, camera: THREE.Camera, canvas: HTMLCanvasElement, avatar: THREE.Object3D, bubbleRoot: HTMLElement, isWalking: () => boolean, voiceEvents: Omit<VoiceEvents, 'isPlayer'>) {
     this.scene = scene;
     this.camera = camera;
     this.canvas = canvas;
     this.avatar = avatar;
     this.bubbleRoot = bubbleRoot;
     this.isWalking = isWalking;
+    this.voice = new VoiceChat({ ...voiceEvents, isPlayer: (id) => this.players.has(id) });
   }
 
   private addPlayer(user: PublicProfile) {
@@ -73,12 +87,14 @@ export class OnlinePlayers {
 
   setSelf(profile: PublicProfile | null) {
     this.selfId = profile?.id ?? null;
+    this.voice.setSelf(this.selfId);
     this.selfBubble?.remove();
     this.selfBubble = profile ? makeBubble(this.bubbleRoot, profile.name, true) : null;
   }
 
   setConnection(connection: CampusConnection | null) {
     this.connection = connection;
+    this.voice.setConnection(connection);
     this.lastSent = { at: -10, key: '' };
     this.positionKnown = false;
   }
@@ -90,7 +106,12 @@ export class OnlinePlayers {
       const user = cleanProfile(raw);
       if (user && user.id !== this.selfId) incoming.set(user.id, user);
     }
-    for (const id of [...this.players.keys()]) if (!incoming.has(id)) this.removePlayer(id);
+    for (const id of [...this.players.keys()]) {
+      if (!incoming.has(id)) {
+        this.removePlayer(id);
+        this.voice.peerLeft(id);
+      }
+    }
     for (const [id, user] of incoming) {
       const existing = this.players.get(id);
       if (!existing) {
@@ -129,6 +150,7 @@ export class OnlinePlayers {
     this.selfBubble = null;
     this.selfId = null;
     this.setConnection(null);
+    this.voice.setSelf(null);
   }
 
   private place(el: HTMLElement, x: number, y: number, z: number, show: boolean, w: number, h: number) {
@@ -165,6 +187,7 @@ export class OnlinePlayers {
     for (const p of list) p.range = p.to.distanceTo(camera.position);
     list.sort((a, b) => a.range - b.range);
 
+    const places: VoicePeerPlace[] = [];
     list.forEach((p, i) => {
       const fig = p.fig;
       const before = fig.position.clone();
@@ -179,13 +202,20 @@ export class OnlinePlayers {
       fig.visible = near;
       const sameSide = indoorBounds(fig.position.x, fig.position.z) === viewerIndoors;
       this.place(p.bubble, fig.position.x, fig.position.y + 2.2, fig.position.z, near && sameSide && p.range < BUBBLE_RANGE, w, h);
+      places.push({ id: p.user.id, distance: fig.position.distanceTo(avatar.position), sameSide });
+      setVoiceIcon(p.bubble, this.voice.badgeFor(p.user.id), this.voice.isSpeaking(p.user.id));
     });
+    this.voice.update(places);
 
-    if (this.selfBubble) this.place(this.selfBubble, avatar.position.x, avatar.position.y + 2.2, avatar.position.z, walking, w, h);
+    if (this.selfBubble) {
+      this.place(this.selfBubble, avatar.position.x, avatar.position.y + 2.2, avatar.position.z, walking, w, h);
+      setVoiceIcon(this.selfBubble, this.voice.selfBadge, this.voice.selfSpeaking);
+    }
     this.sendPosition(time);
   }
 
   dispose() {
     this.clear();
+    this.voice.dispose();
   }
 }

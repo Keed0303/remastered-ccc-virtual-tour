@@ -120,6 +120,11 @@ h1, h2, .brand { font-family: Fredoka, Inter, sans-serif; }
 .walking #stats { display: none; }
 #walk-ui .keys { position: fixed; left: 50%; top: 58px; transform: translateX(-50%); background: rgba(14, 26, 43, 0.82); color: #fff; padding: 7px 13px; border-radius: 99px; font-size: 12px; white-space: nowrap; }
 #walk-exit { position: fixed; left: 16px; top: 16px; }
+#btn-mic { position: fixed; left: 16px; top: 62px; display: flex; align-items: center; min-height: 38px; padding: 8px 13px; border-radius: 9px; background: #0e1a2b; color: #fff; font-size: 13px; font-weight: 600; }
+#btn-mic::before { content: ''; width: 9px; height: 9px; margin-right: 8px; border-radius: 50%; background: #7a8797; }
+#btn-mic[data-mic="live"]::before { background: #33c174; }
+#btn-mic[data-mic="muted"]::before { background: #e5564b; }
+#btn-mic:disabled { opacity: 0.75; cursor: default; }
 #prompt { position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%); background: var(--accent); color: #1c1a10; padding: 10px 16px; border-radius: 10px; font-weight: 700; font-size: 13.5px; box-shadow: 0 4px 16px rgba(20, 30, 50, 0.25); }
 #stick, #touch-actions, #passport-fab, #passport-close { display: none; }
 
@@ -135,6 +140,16 @@ h1, h2, .brand { font-family: Fredoka, Inter, sans-serif; }
 .name-bubble::after { content: ''; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff; border-bottom: 0; }
 .name-bubble.self { background: var(--blue); color: #fff; }
 .name-bubble.self::after { border-top-color: var(--blue); }
+/* The voice icon floats above the name. The colour shows whether voice is working. */
+.name-bubble[data-voice]::before { content: ''; position: absolute; left: 50%; bottom: calc(100% + 6px); width: 26px; height: 26px; margin-left: -13px; border-radius: 50%; background: var(--voice) var(--voice-icon) center / 16px no-repeat; box-shadow: 0 2px 8px rgba(10, 20, 40, 0.35); }
+.name-bubble[data-voice] { --voice-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='9' y='3' width='6' height='11' rx='3'/%3E%3Cpath d='M5 11a7 7 0 0 0 14 0M12 18v3'/%3E%3C/svg%3E"); }
+.name-bubble[data-voice="live"] { --voice: #1f9d55; }
+.name-bubble[data-voice="wait"] { --voice: #7a8797; }
+.name-bubble[data-voice="failed"] { --voice: #c77d0a; }
+.name-bubble[data-voice="muted"] { --voice: #c5362c; --voice-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 9v2a3 3 0 0 0 5 2.2M15 9.5V6a3 3 0 0 0-5.8-1M5 11a7 7 0 0 0 11.5 5.3M19 11a7 7 0 0 1-.6 2.8M12 18v3M3 3l18 18'/%3E%3C/svg%3E"); }
+.name-bubble.speaking[data-voice="live"]::before { animation: voice-pulse 0.9s ease-out infinite; }
+@keyframes voice-pulse { from { box-shadow: 0 0 0 0 rgba(31, 157, 85, 0.65); } to { box-shadow: 0 0 0 11px rgba(31, 157, 85, 0); } }
+@media (prefers-reduced-motion: reduce) { .name-bubble.speaking[data-voice="live"]::before { animation: none; box-shadow: 0 0 0 4px rgba(31, 157, 85, 0.5); } }
 .in-pano #bubbles, .in-pano #passport-fab { display: none; }
 
 #toggles button[hidden] { display: none; }
@@ -189,6 +204,7 @@ h1, h2, .brand { font-family: Fredoka, Inter, sans-serif; }
   .walking #compass { top: calc(62px + env(safe-area-inset-top)); left: auto; right: 12px; }
   #walk-ui .keys { display: none; }
   #walk-exit { left: 10px; top: calc(10px + env(safe-area-inset-top)); min-height: 42px; }
+  #btn-mic { left: 10px; top: calc(60px + env(safe-area-inset-top)); min-height: 42px; }
   #stick { display: block; position: fixed; left: 20px; bottom: calc(24px + env(safe-area-inset-bottom)); width: 130px; height: 130px; border-radius: 50%; background: rgba(255, 255, 255, 0.22); border: 2px solid rgba(255, 255, 255, 0.7); box-shadow: 0 4px 18px rgba(10, 20, 40, 0.28); backdrop-filter: blur(3px); touch-action: none; z-index: 2; }
   #stick-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 255, 255, 0.92); box-shadow: 0 2px 8px rgba(10, 20, 40, 0.35); pointer-events: none; }
   #touch-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; position: fixed; right: 20px; bottom: calc(30px + env(safe-area-inset-bottom)); z-index: 2; }

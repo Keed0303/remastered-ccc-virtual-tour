@@ -78,7 +78,7 @@ export class CampusScene {
     this.walk = new WalkController(avatar, () => this.follow.look.yaw, (l) => events.onNearbyChange?.(l));
     this.pano = new PanoViewer(renderer, canvas, () => this._mode === 'pano', signal);
     this.labels = new LabelProjector(elements.labels, camera, canvas);
-    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking);
+    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking, { onMicChange: (state) => events.onMicChange?.(state), onMicError: (message) => events.onMicError?.(message) });
     enablePicking({
       canvas, camera, world: this.world, signal,
       isOrbit: () => this._mode === 'orbit',
@@ -155,10 +155,12 @@ export class CampusScene {
       e.preventDefault();
     }
     if (e.code === 'KeyE') this.events.onCheckInKey?.();
+    if (e.code === 'KeyM' && !e.repeat) void this.online.voice.toggleMic();
   }
 
   private setMode(mode: SceneMode) {
     this._mode = mode;
+    this.online.voice.setOnFoot(mode === 'walk');
     this.events.onModeChange?.(mode, this._walking);
     this.labels.refresh(this.currentFloor, mode === 'pano');
   }

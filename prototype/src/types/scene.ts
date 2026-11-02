@@ -1,4 +1,5 @@
 import type { LocationDef } from './campus';
+import type { MicState } from './voice';
 
 export type SceneMode = 'orbit' | 'pano' | 'walk';
 export type LayerId = 'people' | 'cars' | 'labels' | 'wire';
@@ -13,6 +14,8 @@ export interface SceneEvents {
   onMouseLockChange?: (locked: boolean) => void;
   onEscape?: () => void;
   onCheckInKey?: () => void;
+  onMicChange?: (state: MicState) => void;
+  onMicError?: (message: string) => void;
 }
 
 // DOM owned by React that the scene writes to every frame.

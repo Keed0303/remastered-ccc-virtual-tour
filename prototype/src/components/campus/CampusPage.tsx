@@ -31,6 +31,7 @@ import { SidePanel } from './SidePanel';
 import { StatsPanel } from './StatsPanel';
 import { ThemePicker } from './ThemePicker';
 import { WalkHud } from './WalkHud';
+import type { MicState } from '../../types/voice';
 
 function Campus() {
   const toast = useToast();
@@ -56,6 +57,8 @@ function Campus() {
 
   const passport = usePassport();
   const { backend, profile, setProfile, status } = useAuth();
+  const [micState, setMicState] = useState<MicState>('off');
+  const micAnnounced = useRef(false);
   const { count: passportCount, refresh: refreshCount } = usePassportCount(backend, status === 'unavailable' || status === 'error');
   const settings = useSiteSettings(backend);
 
@@ -73,6 +76,14 @@ function Campus() {
     onPanoError: () => toast('Could not load this 360° photo.'),
     onMouseLockChange: setMouseLocked,
     onEscape: () => setSelected(null),
+    onMicChange: (state) => {
+      setMicState(state);
+      if (state === 'live' && !micAnnounced.current) {
+        micAnnounced.current = true;
+        toast('Mic on. Students near you can hear you.');
+      }
+    },
+    onMicError: toast,
     onCheckInKey: () => {
       createdScene.current?.follow.releaseMouse();
       checkInNearby(createdScene.current?.walk.nearby ?? null);
@@ -167,6 +178,8 @@ function Campus() {
       {mode === 'pano' && <PanoOverlay name={panoName} onClose={() => scene?.closePano()} />}
       {walking && scene && (
         <WalkHud
+          canTalk={!!profile}
+          micState={micState}
           scene={scene}
           nearby={nearby}
           game={passport.game}

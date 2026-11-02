@@ -3,6 +3,8 @@ import { defineConfig } from '@playwright/test';
 // Uses the installed Chrome. Software WebGL lets the scene run without a GPU.
 export default defineConfig({
   testDir: 'tests/e2e',
+  // Software WebGL and two-student tests overload the CPU when run in parallel.
+  workers: 1,
   timeout: 90_000,
   use: {
     baseURL: 'http://localhost:5174',

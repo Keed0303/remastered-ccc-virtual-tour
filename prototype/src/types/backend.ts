@@ -1,4 +1,5 @@
 import type { Gender, Look, Profile, PublicProfile, Role } from './character';
+import type { VoiceMessage } from './voice';
 
 export interface SiteSettings { showWireframe: boolean; showStudents: boolean; showVehicles: boolean; showLabels: boolean; npcCount: number }
 export interface Move { id: string; x: number; y: number; z: number; r: number }
@@ -10,8 +11,8 @@ export interface SignUpInput { email: string; password: string; profile: Look & 
 export type SignUpResult = { needsConfirm: true; profile?: undefined } | { needsConfirm?: false; profile: Profile | null };
 
 // Everything arriving from other clients is untrusted until it has been cleaned.
-export interface CampusHandlers { onUsers: (users: unknown[]) => void; onMove: (move: unknown) => void; onError?: (status: string) => void }
-export interface CampusConnection { sendMove: (move: Move) => unknown; update: (next: PublicProfile) => unknown; leave: () => unknown }
+export interface CampusHandlers { onUsers: (users: unknown[]) => void; onMove: (move: unknown) => void; onVoice: (message: unknown) => void; onError?: (status: string) => void }
+export interface CampusConnection { sendMove: (move: Move) => unknown; sendVoice: (message: VoiceMessage) => unknown; update: (next: PublicProfile) => unknown; leave: () => unknown }
 export type Unsubscribe = () => unknown;
 
 export interface Backend {

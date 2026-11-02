@@ -5,7 +5,8 @@ type Accounts = Record<string, Profile>;
 type BusMessage =
   | { type: 'hello' | 'here'; user: PublicProfile }
   | { type: 'bye'; id: string }
-  | { type: 'move'; move: unknown };
+  | { type: 'move'; move: unknown }
+  | { type: 'voice'; message: unknown };
 
 const ACCOUNTS = 'ccc-demo-accounts';
 const SESSION = 'ccc-demo-session';
@@ -69,7 +70,7 @@ export function demoBackend(): Backend {
     async passportCount() {
       return Object.keys(accounts()).length;
     },
-    async joinCampus(profile, { onUsers, onMove }) {
+    async joinCampus(profile, { onUsers, onMove, onVoice }) {
       const bus = new BroadcastChannel('ccc-demo-campus');
       const seen = new Map<string, { user: PublicProfile; at: number }>();
       let me = profile;
@@ -85,6 +86,8 @@ export function demoBackend(): Backend {
           publish();
         } else if (data.type === 'move') {
           onMove(data.move);
+        } else if (data.type === 'voice') {
+          onVoice(data.message);
         }
       };
       const beat = setInterval(() => {
@@ -99,6 +102,7 @@ export function demoBackend(): Backend {
       publish();
       return {
         sendMove: (move) => bus.postMessage({ type: 'move', move }),
+        sendVoice: (message) => bus.postMessage({ type: 'voice', message }),
         update: (next) => { me = next; bus.postMessage({ type: 'hello', user: me }); publish(); },
         leave: () => { bye(); removeEventListener('pagehide', bye); clearInterval(beat); bus.close(); },
       };
