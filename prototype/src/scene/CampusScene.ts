@@ -13,6 +13,7 @@ import { LabelProjector } from './LabelProjector';
 import { Npcs } from './Npcs';
 import { OnlinePlayers } from './OnlinePlayers';
 import { PanoViewer } from './PanoViewer';
+import { SeatHint } from './SeatHint';
 import { enablePicking } from './Picking';
 import { Traffic } from './Traffic';
 import { WalkController } from './WalkController';
@@ -31,6 +32,7 @@ export class CampusScene {
   readonly walk: WalkController;
   readonly follow: FollowCamera;
   readonly online: OnlinePlayers;
+  readonly seatHint: SeatHint;
   readonly npcs: Npcs;
   readonly traffic: Traffic;
   private environment: Environment;
@@ -75,10 +77,11 @@ export class CampusScene {
     const camera = this.rig.camera;
     const inWalk = () => this._mode === 'walk';
     this.follow = new FollowCamera(camera, avatar, canvas, inWalk, (locked) => events.onMouseLockChange?.(locked), signal);
-    this.walk = new WalkController(avatar, () => this.follow.look.yaw, (l) => events.onNearbyChange?.(l));
+    this.walk = new WalkController(avatar, () => this.follow.look.yaw, (l) => events.onNearbyChange?.(l), () => this.online.takenSeats(), (state) => events.onSeatChange?.(state));
     this.pano = new PanoViewer(renderer, canvas, () => this._mode === 'pano', signal);
     this.labels = new LabelProjector(elements.labels, camera, canvas);
-    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking, { onMicChange: (state) => events.onMicChange?.(state), onMicError: (message) => events.onMicError?.(message) });
+    this.online = new OnlinePlayers(scene, camera, canvas, avatar, elements.bubbles, () => this._walking, () => this.walk.seat, { onMicChange: (state) => events.onMicChange?.(state), onMicError: (message) => events.onMicError?.(message) });
+    this.seatHint = new SeatHint(elements.bubbles, camera, canvas);
     enablePicking({
       canvas, camera, world: this.world, signal,
       isOrbit: () => this._mode === 'orbit',
@@ -130,6 +133,7 @@ export class CampusScene {
     this.traffic.update(dt);
     this.world.flag.wave(time);
     this.online.update(dt, time);
+    this.seatHint.update(this._walking ? this.walk.nearSeat : null);
     this.updateCompass();
     this.labels.update(this._walking && indoorBounds(this.avatar.position.x, this.avatar.position.z));
     this.renderer.render(this.scene, this.rig.camera);
@@ -154,7 +158,10 @@ export class CampusScene {
       this.walk.keys.add(e.code);
       e.preventDefault();
     }
-    if (e.code === 'KeyE') this.events.onCheckInKey?.();
+    if (e.code === 'KeyE') {
+      if (this.walk.seat === null && this.walk.nearSeat === null) this.events.onCheckInKey?.();
+      else if (!e.repeat) this.walk.useSeat();
+    }
     if (e.code === 'KeyM' && !e.repeat) void this.online.voice.toggleMic();
   }
 
@@ -279,6 +286,7 @@ export class CampusScene {
     this.renderer.setAnimationLoop(null);
     this.listeners.abort();
     this.online.dispose();
+    this.seatHint.dispose();
     this.follow.dispose();
     this.rig.dispose();
     this.pano.dispose();

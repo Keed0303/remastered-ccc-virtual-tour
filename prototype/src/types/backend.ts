@@ -2,7 +2,7 @@ import type { Gender, Look, Profile, PublicProfile, Role } from './character';
 import type { VoiceMessage } from './voice';
 
 export interface SiteSettings { showWireframe: boolean; showStudents: boolean; showVehicles: boolean; showLabels: boolean; npcCount: number }
-export interface Move { id: string; x: number; y: number; z: number; r: number }
+export interface Move { id: string; x: number; y: number; z: number; r: number; s?: number }
 
 export interface AdminUser extends Profile { email: string | null; confirmed: boolean; lastSignIn: string | null; createdAt: string }
 export interface AdminUserFields { name: string; email: string; gender: Gender; role: Role; skin: string; hair: string; password?: string }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BENCHES } from '../../utils/seats';
 import { Batch, C } from './Batch';
 import { hipRoof, tree } from './props';
 import { canvasTex } from './textures';
@@ -104,15 +105,13 @@ export function buildGround(mat: THREE.Material, glowMat: THREE.Material) {
   }
 
   // Benches, bins and lamp posts down both sides of the plaza.
-  for (let z = -120; z < -55; z += 13) {
-    for (const [x, s] of [[px0 + 1.2, 1], [px1 - 1.2, -1]]) {
-      b.box(x - 0.45, 0.45, z - 1.4, x + 0.45, 0.62, z + 1.4, C.sky);
-      b.box(x - 0.35, 0, z - 1.2, x + 0.35, 0.45, z - 1, C.dark);
-      b.box(x - 0.35, 0, z + 1, x + 0.35, 0.45, z + 1.2, C.dark);
-      b.cyl(x + s * 0.2, 0, z + 5, 0.42, 1.2, C.sky, 10);
-      b.cyl(x + s * 0.6, 0, z - 4.5, 0.09, 5, '#47525f', 6);
-      glow.ball(x + s * 0.6, 5.2, z - 4.5, 0.34, '#fff1c2', 1);
-    }
+  for (const { x, z, side: s } of BENCHES) {
+    b.box(x - 0.45, 0.45, z - 1.4, x + 0.45, 0.62, z + 1.4, C.sky);
+    b.box(x - 0.35, 0, z - 1.2, x + 0.35, 0.45, z - 1, C.dark);
+    b.box(x - 0.35, 0, z + 1, x + 0.35, 0.45, z + 1.2, C.dark);
+    b.cyl(x + s * 0.2, 0, z + 5, 0.42, 1.2, C.sky, 10);
+    b.cyl(x + s * 0.6, 0, z - 4.5, 0.09, 5, '#47525f', 6);
+    glow.ball(x + s * 0.6, 5.2, z - 4.5, 0.34, '#fff1c2', 1);
   }
   [[12, -112, 2], [11, -96, 0], [13, -82, 1], [11, -68, 2], [55, -112, 1], [56, -66, 1], [22, -92, 0], [46, -90, 1], [46, -66, 2], [22, -68, 1]].forEach(([x, z, t]) => tree(b, x, z, 1.9, t));
   [[3, -64], [-1, -82], [68, -76], [72, -62]].forEach(([x, z], i) => tree(b, x, z, 1.2, i));

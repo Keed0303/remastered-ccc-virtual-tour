@@ -117,6 +117,15 @@ export function swingLimbs(figure: THREE.Object3D, swing: number) {
   armR.rotation.x = swing;
 }
 
+// Blends from standing (0) to legs forward with hands on the knees (1). Sway swings the legs a little.
+export function sitLimbs(figure: THREE.Object3D, amount: number, sway = 0) {
+  const { legL, legR, armL, armR } = figure.userData as FigureLimbs;
+  legL.rotation.x = -1.45 * amount + sway;
+  legR.rotation.x = -1.45 * amount - sway;
+  armL.rotation.x = -0.75 * amount;
+  armR.rotation.x = -0.75 * amount;
+}
+
 // Replaces a figure's body parts for a new look, keeping its place in the world.
 export function setFigureLook(g: THREE.Group, look: Look, { backpack = false }: FigureOptions = {}) {
   disposeFigure(g);

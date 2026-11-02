@@ -58,7 +58,7 @@ Note: the user-level `/implement-features` skill describes a different project
 | `src/utils/campusData.ts` | **All content.** Floor plans, locations, quizzes, badges, camera views, themes, swatches. |
 | `src/utils/physics.ts` | `COLLIDERS`, `floorHeight`, `cameraCeiling`, `indoorBounds`, `WALK_BOUNDS`. |
 | `src/utils/validation.ts` | `cleanProfile`, `cleanSettings`, and form validation. |
-| `src/utils/passport.ts`, `layers.ts`, `voice.ts` | Pure game, layer, and voice rules, with tests beside them. |
+| `src/utils/passport.ts`, `layers.ts`, `voice.ts`, `seats.ts` | Pure game, layer, voice, and seat rules, with tests beside them. `world/ground.ts` draws benches from `seats.ts`. |
 | `src/utils/backend/` | Accounts and presence behind one interface: Supabase when configured, or a local demo in `npm run dev`. |
 | `src/types/` | Shared TypeScript types. |
 | `src/styles/` | `campus.css` and `account.css` load with the campus. `admin.css` loads with the admin page. |

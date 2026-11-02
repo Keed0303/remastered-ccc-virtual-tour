@@ -31,6 +31,7 @@ import { SidePanel } from './SidePanel';
 import { StatsPanel } from './StatsPanel';
 import { ThemePicker } from './ThemePicker';
 import { WalkHud } from './WalkHud';
+import type { SeatState } from '../../types/scene';
 import type { MicState } from '../../types/voice';
 
 function Campus() {
@@ -58,6 +59,7 @@ function Campus() {
   const passport = usePassport();
   const { backend, profile, setProfile, status } = useAuth();
   const [micState, setMicState] = useState<MicState>('off');
+  const [seat, setSeat] = useState<SeatState>({ seated: false, canSit: false });
   const micAnnounced = useRef(false);
   const { count: passportCount, refresh: refreshCount } = usePassportCount(backend, status === 'unavailable' || status === 'error');
   const settings = useSiteSettings(backend);
@@ -76,6 +78,7 @@ function Campus() {
     onPanoError: () => toast('Could not load this 360° photo.'),
     onMouseLockChange: setMouseLocked,
     onEscape: () => setSelected(null),
+    onSeatChange: setSeat,
     onMicChange: (state) => {
       setMicState(state);
       if (state === 'live' && !micAnnounced.current) {
@@ -180,6 +183,7 @@ function Campus() {
         <WalkHud
           canTalk={!!profile}
           micState={micState}
+          seat={seat}
           scene={scene}
           nearby={nearby}
           game={passport.game}

@@ -4,12 +4,14 @@ import type { CampusConnection, Move } from '../types/backend';
 import type { PublicProfile } from '../types/character';
 import type { VoiceBadge } from '../types/voice';
 import { WALK_BOUNDS, floorHeight, indoorBounds } from '../utils/physics';
+import { SEATS, cleanSeat } from '../utils/seats';
 import { cleanProfile } from '../utils/validation';
-import { createPlayerFigure, disposeFigure, swingLimbs } from './characters/figure';
+import { createPlayerFigure, disposeFigure, sitLimbs, swingLimbs } from './characters/figure';
 import { VoiceChat, type VoiceEvents, type VoicePeerPlace } from './VoiceChat';
 
 const MAX_VISIBLE = 20;
 const BUBBLE_RANGE = 70;
+const SIT_BLEND_TIME = 0.4;
 const num = (v: unknown, fallback: number) => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
 
 function makeBubble(parent: HTMLElement, name: string, self = false) {
@@ -39,7 +41,7 @@ function spawnPoint(id: string): [number, number, number] {
 
 const lookChanged = (a: PublicProfile, b: PublicProfile) => a.gender !== b.gender || a.skin !== b.skin || a.hair !== b.hair;
 
-interface Player { user: PublicProfile; fig: THREE.Group; bubble: HTMLElement; to: THREE.Vector3; rot: number; phase: number; range: number }
+interface Player { user: PublicProfile; fig: THREE.Group; bubble: HTMLElement; to: THREE.Vector3; rot: number; phase: number; range: number; seat: number | null; sitBlend: number }
 
 export class OnlinePlayers {
   readonly players = new Map<string, Player>();
@@ -56,14 +58,16 @@ export class OnlinePlayers {
   private avatar: THREE.Object3D;
   private bubbleRoot: HTMLElement;
   private isWalking: () => boolean;
+  private getSeat: () => number | null;
 
-  constructor(scene: THREE.Scene, camera: THREE.Camera, canvas: HTMLCanvasElement, avatar: THREE.Object3D, bubbleRoot: HTMLElement, isWalking: () => boolean, voiceEvents: Omit<VoiceEvents, 'isPlayer'>) {
+  constructor(scene: THREE.Scene, camera: THREE.Camera, canvas: HTMLCanvasElement, avatar: THREE.Object3D, bubbleRoot: HTMLElement, isWalking: () => boolean, getSeat: () => number | null, voiceEvents: Omit<VoiceEvents, 'isPlayer'>) {
     this.scene = scene;
     this.camera = camera;
     this.canvas = canvas;
     this.avatar = avatar;
     this.bubbleRoot = bubbleRoot;
     this.isWalking = isWalking;
+    this.getSeat = getSeat;
     this.voice = new VoiceChat({ ...voiceEvents, isPlayer: (id) => this.players.has(id) });
   }
 
@@ -73,7 +77,7 @@ export class OnlinePlayers {
     fig.position.set(x, y, z);
     fig.rotation.y = Math.PI;
     this.scene.add(fig);
-    this.players.set(user.id, { user, fig, bubble: makeBubble(this.bubbleRoot, user.name), to: new THREE.Vector3(x, y, z), rot: Math.PI, phase: 0, range: 0 });
+    this.players.set(user.id, { user, fig, bubble: makeBubble(this.bubbleRoot, user.name), to: new THREE.Vector3(x, y, z), rot: Math.PI, phase: 0, range: 0, seat: null, sitBlend: 0 });
   }
 
   private removePlayer(id: string) {
@@ -117,7 +121,7 @@ export class OnlinePlayers {
       if (!existing) {
         this.addPlayer(user);
       } else if (lookChanged(existing.user, user) || existing.user.name !== user.name) {
-        const { to, rot, phase } = existing;
+        const { to, rot, phase, seat, sitBlend } = existing;
         const pos = existing.fig.position.clone();
         this.removePlayer(id);
         this.addPlayer(user);
@@ -126,6 +130,8 @@ export class OnlinePlayers {
         next.to.copy(to);
         next.rot = rot;
         next.phase = phase;
+        next.seat = seat;
+        next.sitBlend = sitBlend;
       }
     }
     return this.players.size + (this.selfId ? 1 : 0);
@@ -135,6 +141,14 @@ export class OnlinePlayers {
     const move = raw as Partial<Record<keyof Move, unknown>> | null | undefined;
     const p = move && typeof move.id === 'string' ? this.players.get(move.id) : undefined;
     if (!move || !p) return;
+    // A sitting student is placed from this browser's own list of seats.
+    p.seat = cleanSeat(move.s);
+    if (p.seat !== null) {
+      const seat = SEATS[p.seat];
+      p.to.set(seat.x, seat.y, seat.z);
+      p.rot = seat.rotation;
+      return;
+    }
     const b = WALK_BOUNDS;
     p.to.set(
       THREE.MathUtils.clamp(num(move.x, p.to.x), b.x0, b.x1),
@@ -142,6 +156,12 @@ export class OnlinePlayers {
       THREE.MathUtils.clamp(num(move.z, p.to.z), b.z0, b.z1),
     );
     p.rot = num(move.r, p.rot);
+  }
+
+  takenSeats() {
+    const taken = new Set<number>();
+    for (const p of this.players.values()) if (p.seat !== null) taken.add(p.seat);
+    return taken;
   }
 
   clear() {
@@ -167,10 +187,11 @@ export class OnlinePlayers {
     const { connection, selfId, lastSent } = this;
     if (!connection || !selfId) return;
     const p = this.avatar.position;
-    const key = this.isWalking() ? `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)},${this.avatar.rotation.y.toFixed(2)}` : lastSent.key;
+    const seat = this.getSeat();
+    const key = this.isWalking() ? `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)},${this.avatar.rotation.y.toFixed(2)},${seat}` : lastSent.key;
     const changed = key !== lastSent.key;
     if ((changed && time - lastSent.at > 0.1) || (this.positionKnown && time - lastSent.at > 2)) {
-      connection.sendMove({ id: selfId, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +this.avatar.rotation.y.toFixed(2) });
+      connection.sendMove({ id: selfId, x: +p.x.toFixed(2), y: +p.y.toFixed(2), z: +p.z.toFixed(2), r: +this.avatar.rotation.y.toFixed(2), ...(seat === null ? {} : { s: seat }) });
       this.lastSent = { at: time, key };
       this.positionKnown = true;
     }
@@ -197,7 +218,15 @@ export class OnlinePlayers {
       const speed = dt > 0 ? before.distanceTo(fig.position) / dt : 0;
       const moving = speed > 0.3;
       if (moving) p.phase += dt * 11;
-      swingLimbs(fig, moving ? Math.sin(p.phase) * 0.5 : 0);
+      // Eases in and out of the pose, the same as the student sees on their own screen.
+      const sitTarget = p.seat === null ? 0 : 1;
+      p.sitBlend = sitTarget > p.sitBlend ? Math.min(1, p.sitBlend + dt / SIT_BLEND_TIME) : Math.max(0, p.sitBlend - dt / SIT_BLEND_TIME);
+      if (p.sitBlend > 0) {
+        p.phase += dt * 1.6;
+        sitLimbs(fig, p.sitBlend, p.sitBlend === 1 ? Math.sin(p.phase) * 0.06 : 0);
+      } else {
+        swingLimbs(fig, moving ? Math.sin(p.phase) * 0.5 : 0);
+      }
       const near = i < MAX_VISIBLE;
       fig.visible = near;
       const sameSide = indoorBounds(fig.position.x, fig.position.z) === viewerIndoors;

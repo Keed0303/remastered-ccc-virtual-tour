@@ -32,6 +32,7 @@ export function useCampusScene(refs: SceneRefs, events: SceneEvents) {
         onMouseLockChange: (...a) => latest.current.onMouseLockChange?.(...a),
         onEscape: () => latest.current.onEscape?.(),
         onCheckInKey: () => latest.current.onCheckInKey?.(),
+        onSeatChange: (...a) => latest.current.onSeatChange?.(...a),
         onMicChange: (...a) => latest.current.onMicChange?.(...a),
         onMicError: (...a) => latest.current.onMicError?.(...a),
       },

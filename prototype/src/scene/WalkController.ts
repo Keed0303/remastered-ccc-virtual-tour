@@ -1,40 +1,146 @@
 import * as THREE from 'three';
 import type { LocationDef } from '../types/campus';
 import { LOCATIONS } from '../utils/campusData';
+import type { SeatState } from '../types/scene';
 import { COLLIDERS, WALK_BOUNDS, floorHeight } from '../utils/physics';
-import { swingLimbs } from './characters/figure';
+import { SEATS, nearestSeat } from '../utils/seats';
+import { sitLimbs, swingLimbs } from './characters/figure';
 
 const GRAVITY = 19, JUMP_SPEED = 5.8, STEP_LIMIT = 0.5;
 const R = 0.5;
+const SIT_TIME = 0.45, STAND_TIME = 0.35, SIT_SWAY = 0.06;
 const blocked = (x: number, z: number) => COLLIDERS.some((c) => x > c.x0 - R && x < c.x1 + R && z > c.z0 - R && z < c.z1 + R);
+
+// One eased move between standing and sitting: position, facing, and pose.
+interface SeatMove { from: THREE.Vector3; to: THREE.Vector3; fromRot: number; toRot: number; fromBlend: number; toBlend: number; t: number; duration: number }
 
 // The player on foot. Input arrives through `keys` and `stick`, and everything runs per frame.
 export class WalkController {
   readonly keys = new Set<string>();
   readonly stick = { x: 0, y: 0, id: null as number | null };
   nearby: LocationDef | null = null;
+  seat: number | null = null;
+  nearSeat: number | null = null;
+  sitBlend = 0;
+  private standing = false;
+  private seatMove: SeatMove | null = null;
+  private waitForRelease = false;
   private walkPhase = 0;
   private fallSpeed = 0;
   private fwd = new THREE.Vector3();
   private avatar: THREE.Object3D;
   private getYaw: () => number;
   private onNearby: (location: LocationDef | null) => void;
+  private takenSeats: () => ReadonlySet<number>;
+  private onSeat: (state: SeatState) => void;
 
-  constructor(avatar: THREE.Object3D, getYaw: () => number, onNearby: (location: LocationDef | null) => void) {
+  constructor(avatar: THREE.Object3D, getYaw: () => number, onNearby: (location: LocationDef | null) => void, takenSeats: () => ReadonlySet<number>, onSeat: (state: SeatState) => void) {
     this.avatar = avatar;
     this.getYaw = getYaw;
     this.onNearby = onNearby;
+    this.takenSeats = takenSeats;
+    this.onSeat = onSeat;
   }
 
   spawn() {
     this.avatar.position.set(29, floorHeight(29, -116), -116);
     this.avatar.rotation.y = Math.PI;
     this.fallSpeed = 0;
+    this.seat = null;
+    this.seatMove = null;
+    this.standing = false;
+    this.sitBlend = 0;
   }
 
   stop() {
     this.keys.clear();
+    if (this.seat !== null) {
+      const seat = SEATS[this.seat];
+      this.avatar.position.set(seat.standX, floorHeight(seat.standX, seat.z), seat.z);
+      this.finishStanding();
+    }
     this.setNearby(null);
+    this.setNearSeat(null);
+  }
+
+  // E or the touch button. Returns whether it did anything, so E can fall through to check in.
+  useSeat() {
+    if (this.seat !== null) {
+      this.stand();
+      return true;
+    }
+    if (this.nearSeat === null) return false;
+    this.sit(this.nearSeat);
+    return true;
+  }
+
+  private startSeatMove(x: number, y: number, z: number, toRot: number, toBlend: number, duration: number) {
+    const { avatar } = this;
+    this.seatMove = { from: avatar.position.clone(), to: new THREE.Vector3(x, y, z), fromRot: avatar.rotation.y, toRot, fromBlend: this.sitBlend, toBlend, t: 0, duration };
+  }
+
+  private sit(index: number) {
+    const seat = SEATS[index];
+    this.seat = index;
+    this.standing = false;
+    // Keys or a joystick already held have to be let go, or walking up and sitting would stand straight back up.
+    this.waitForRelease = true;
+    this.fallSpeed = 0;
+    this.startSeatMove(seat.x, seat.y, seat.z, seat.rotation, 1, SIT_TIME);
+    this.setNearby(null);
+    this.nearSeat = null;
+    this.reportSeat();
+  }
+
+  private stand() {
+    if (this.standing) return;
+    const seat = SEATS[this.seat!];
+    this.standing = true;
+    this.startSeatMove(seat.standX, floorHeight(seat.standX, seat.z), seat.z, this.avatar.rotation.y, 0, STAND_TIME);
+  }
+
+  private finishStanding() {
+    this.seat = null;
+    this.seatMove = null;
+    this.standing = false;
+    this.sitBlend = 0;
+    swingLimbs(this.avatar, 0);
+    // Set now, so E works again straight away.
+    this.nearSeat = nearestSeat(this.avatar.position.x, this.avatar.position.z, this.takenSeats());
+    this.reportSeat();
+  }
+
+  private updateSeated(dt: number, hasInput: boolean) {
+    if (!hasInput) this.waitForRelease = false;
+    else if (!this.waitForRelease) this.stand();
+
+    const { seatMove, avatar } = this;
+    if (seatMove) {
+      seatMove.t = Math.min(1, seatMove.t + dt / seatMove.duration);
+      const eased = THREE.MathUtils.smoothstep(seatMove.t, 0, 1);
+      avatar.position.lerpVectors(seatMove.from, seatMove.to, eased);
+      const turn = Math.atan2(Math.sin(seatMove.toRot - seatMove.fromRot), Math.cos(seatMove.toRot - seatMove.fromRot));
+      avatar.rotation.y = seatMove.fromRot + turn * eased;
+      this.sitBlend = THREE.MathUtils.lerp(seatMove.fromBlend, seatMove.toBlend, eased);
+      sitLimbs(avatar, this.sitBlend);
+      if (seatMove.t < 1) return;
+      this.seatMove = null;
+      if (this.standing) this.finishStanding();
+      return;
+    }
+    // A small swing of the legs while resting on the bench.
+    this.walkPhase += dt * 1.6;
+    sitLimbs(avatar, this.sitBlend, Math.sin(this.walkPhase) * SIT_SWAY);
+  }
+
+  private setNearSeat(next: number | null) {
+    if (next === this.nearSeat) return;
+    this.nearSeat = next;
+    this.reportSeat();
+  }
+
+  private reportSeat() {
+    this.onSeat({ seated: this.seat !== null, canSit: this.nearSeat !== null });
   }
 
   private setNearby(next: LocationDef | null) {
@@ -53,6 +159,10 @@ export class WalkController {
     ax += stick.x;
     az += stick.y;
     const moving = ax || az;
+    if (this.seat !== null) {
+      this.updateSeated(dt, !!moving || keys.has('Space'));
+      return;
+    }
     if (moving) {
       const yaw = this.getYaw();
       fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw));
@@ -99,6 +209,8 @@ export class WalkController {
       const d = Math.hypot(spot[0] - avatar.position.x, spot[1] - avatar.position.z);
       if (d < best) { best = d; closest = l; }
     }
-    this.setNearby(closest);
+    this.setNearSeat(nearestSeat(avatar.position.x, avatar.position.z, this.takenSeats()));
+    // E sits first near a bench, so only one action is on offer.
+    this.setNearby(this.nearSeat === null ? closest : null);
   }
 }
