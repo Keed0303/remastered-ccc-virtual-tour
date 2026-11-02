@@ -1,17 +1,18 @@
 import * as THREE from 'three';
+import type { Gender } from '../types/character';
 import { DEFAULT_SETTINGS, NPC_MAX } from '../utils/campusData';
-import { FIGURE, figureArm, figureBody, figureLeg } from './characters/figure';
+import { FEMALE, FIGURE, figureArm, figureBody, figureLeg } from './characters/figure';
 import { disposeObject } from './dispose';
 
-const LOOKS = [
-  { skin: '#e0ac84', hair: '#1f1712' },
-  { skin: '#c98d63', hair: '#2d1c12', longHair: true },
-  { skin: '#b97a52', hair: '#17120e' },
-  { skin: '#d9a47e', hair: '#3a2a1c', longHair: true },
+const LOOKS: { skin: string; hair: string; gender: Gender }[] = [
+  { skin: '#e0ac84', hair: '#1f1712', gender: 'male' },
+  { skin: '#c98d63', hair: '#2d1c12', gender: 'female' },
+  { skin: '#b97a52', hair: '#17120e', gender: 'male' },
+  { skin: '#d9a47e', hair: '#3a2a1c', gender: 'female' },
 ];
 const WALK_PATHS: [number, number][][] = [
-  [[30, -118], [30, -62]], [[38, -62], [38, -118]], [[24, -62], [24, -51]], [[26, -112], [44, -112]],
-  [[-6, -22], [-6, 48]], [[47, -49], [47, -41]], [[-5.8, 54], [-5.8, 88]], [[20, -60], [46, -60]],
+  [[30, -116], [30, -62]], [[38, -62], [38, -116]], [[31, -62], [26, -51]], [[28, -112], [40, -112]],
+  [[-6, -22], [-6, 48]], [[47, -49], [47, -41]], [[-5.8, 54], [-5.8, 88]], [[20, -59.5], [46, -59.5]],
 ];
 
 // Walking students. Meshes are sized for the maximum, and only the active number is drawn.
@@ -21,7 +22,7 @@ export class Npcs {
   private material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.75, flatShading: true });
   private bodies: THREE.InstancedMesh[];
   private arms: THREE.InstancedMesh[];
-  readonly legs: THREE.InstancedMesh;
+  private legs: THREE.InstancedMesh[];
   private walkers = Array.from({ length: NPC_MAX }, (_, i) => ({
     path: WALK_PATHS[i % WALK_PATHS.length],
     t: Math.random(),
@@ -40,7 +41,7 @@ export class Npcs {
     const perLook = Math.ceil(NPC_MAX / LOOKS.length);
     this.bodies = LOOKS.map((look) => this.instanced(figureBody(look), perLook));
     this.arms = LOOKS.map((look) => this.instanced(figureArm(look.skin), perLook * 2));
-    this.legs = this.instanced(figureLeg(), NPC_MAX * 2);
+    this.legs = LOOKS.map((look) => this.instanced(figureLeg(look.gender === 'female' ? look.skin : undefined), perLook * 2));
   }
 
   private instanced(geo: THREE.BufferGeometry, count: number) {
@@ -77,19 +78,20 @@ export class Npcs {
       const n = counters[look]++;
       this.bodies[look].setMatrixAt(n, root.matrix);
       const swing = Math.sin(time * 5.5 + w.phase) * 0.6;
-      this.setLimb(this.arms[look], n * 2, FIGURE.shoulderX, FIGURE.shoulderY, -swing);
-      this.setLimb(this.arms[look], n * 2 + 1, -FIGURE.shoulderX, FIGURE.shoulderY, swing);
-      this.setLimb(this.legs, i * 2, FIGURE.hipX, FIGURE.hipY, swing);
-      this.setLimb(this.legs, i * 2 + 1, -FIGURE.hipX, FIGURE.hipY, -swing);
+      const { shoulderX, hipX } = LOOKS[look].gender === 'female' ? FEMALE : FIGURE;
+      this.setLimb(this.arms[look], n * 2, shoulderX, FIGURE.shoulderY, -swing);
+      this.setLimb(this.arms[look], n * 2 + 1, -shoulderX, FIGURE.shoulderY, swing);
+      this.setLimb(this.legs[look], n * 2, hipX, FIGURE.hipY, swing);
+      this.setLimb(this.legs[look], n * 2 + 1, -hipX, FIGURE.hipY, -swing);
     }
     LOOKS.forEach((_, l) => {
       this.bodies[l].count = counters[l];
       this.arms[l].count = counters[l] * 2;
+      this.legs[l].count = counters[l] * 2;
+      this.legs[l].instanceMatrix.needsUpdate = true;
       this.bodies[l].instanceMatrix.needsUpdate = true;
       this.arms[l].instanceMatrix.needsUpdate = true;
     });
-    this.legs.count = this.active * 2;
-    this.legs.instanceMatrix.needsUpdate = true;
   }
 
   dispose() {

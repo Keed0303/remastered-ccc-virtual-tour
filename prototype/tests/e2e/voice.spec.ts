@@ -57,12 +57,11 @@ test('two students talk: connection, audio, icons, mute, range, and leaving', as
   await register(b, 'Ben Hears', 'ben@example.test');
   await expect(a.locator('#online-count')).toHaveText('2 online', { timeout: 15_000 });
   await walkTo(a, 30, -110);
+  // Explore turns the mic on, without another click. The message only lasts 3.2 seconds, so check it first.
+  await expect(a.locator('.toast-item', { hasText: 'Mic on' })).toBeVisible();
   await walkTo(b, 33, -110);
-
-  // Explore turns the mic on, without another click.
   await expect(a.locator('#btn-mic')).toHaveAttribute('data-mic', 'live');
   await expect(b.locator('#btn-mic')).toHaveAttribute('data-mic', 'live');
-  await expect(a.locator('.toast-item').last()).toContainText('Mic on');
   await expect(bubble(a, 'Ana Talks')).toHaveAttribute('data-voice', 'live');
 
   // Connected: green on both screens, and real audio arrives at a volume.

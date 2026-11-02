@@ -42,6 +42,7 @@ These are not claimed by this policy and remain with their respective owners:
 | Supabase client library | MIT License, © Supabase |
 | Fredoka and Inter fonts | SIL Open Font License |
 | Map and Street View references used during research | Google and its data providers |
+| Street shapes and campus land outline | Based on OpenStreetMap data, © OpenStreetMap contributors, Open Database License |
 
 This project is an independent student work. Use of the college's name and likeness does not imply that City College of Calamba endorses or sponsors it.
 

@@ -1,5 +1,5 @@
 // Where the plaza benches are and how to sit on them. world/ground.ts draws from BENCHES.
-const PLAZA_X0 = 18, PLAZA_X1 = 50;
+export const PLAZA = { x0: 18, x1: 50, z0: -125, z1: -58, axis: 34 };
 const SEAT_TOP = 0.62;
 // A figure's hips are this far above its feet, after its 1.15 scale.
 const HIP_HEIGHT = 0.736;
@@ -12,10 +12,10 @@ export const SEAT_REACH = 1.8;
 export interface Bench { x: number; z: number; side: 1 | -1 }
 export interface Seat { x: number; y: number; z: number; rotation: number; standX: number }
 
-// Down both sides of the plaza, each facing the middle.
+// Under the pergolas on both sides of the plaza, each facing the middle.
 export const BENCHES: Bench[] = [];
-for (let z = -120; z < -55; z += 13) {
-  BENCHES.push({ x: PLAZA_X0 + 1.2, z, side: 1 }, { x: PLAZA_X1 - 1.2, z, side: -1 });
+for (const z of [-110, -102, -94, -86, -78]) {
+  BENCHES.push({ x: PLAZA.x0 + 4.5, z, side: 1 }, { x: PLAZA.x1 - 4.5, z, side: -1 });
 }
 
 export const SEATS: Seat[] = BENCHES.flatMap(({ x, z, side }) => [-SEAT_OFFSET, SEAT_OFFSET].map((offset) => ({

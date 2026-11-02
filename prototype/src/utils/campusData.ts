@@ -115,12 +115,12 @@ const centre = (floor: FloorKey, name: string): Vec3 => {
 // Panel text comes from the original tour, lightly trimmed and with typos corrected.
 export const LOCATIONS: LocationDef[] = [
   {
-    id: 'flagpole', name: 'Flagpole Plaza', kind: 'Rizal Plaza', floor: null, pos: [34, 2, -105], pano: 'panos/flagpole.jpg',
+    id: 'flagpole', name: 'Flagpole Plaza', kind: 'Rizal Plaza', floor: null, pos: [34.6, 2, -121.5], pano: 'panos/flagpole.jpg',
     text: ['The first stop of the original tour. The plaza leads past the Rizal Monument to the front of the college, which was once the Old City Hall of Calamba.'],
     quiz: { q: 'What was the Old Building before it became CCC?', options: ['A market', 'The Old City Hall', 'A hospital'], answer: 1 },
   },
   {
-    id: 'monument', name: 'Rizal Monument', kind: 'Rizal Plaza', floor: null, pos: [34, 5, -74], pano: 'panos/monument.jpg',
+    id: 'monument', name: 'Rizal Monument', kind: 'Rizal Plaza', floor: null, pos: [34, 5, -98], pano: 'panos/monument.jpg',
     text: ['Dr. José Rizal, the national hero of the Philippines, was born in 1861 in the town of Calamba in Laguna province. This statue was built to honor and commemorate the things that our hero made for this country.'],
     quiz: { q: 'In what year was José Rizal born?', options: ['1861', '1896', '1919'], answer: 0 },
   },

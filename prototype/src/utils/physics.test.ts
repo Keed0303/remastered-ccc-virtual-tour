@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { COLLIDERS, WALK_BOUNDS, cameraCeiling, floorHeight, indoorBounds } from './physics';
+import { COLLIDERS, TREES, WALK_BOUNDS, cameraCeiling, floorHeight, indoorBounds } from './physics';
+import { PLAZA } from './seats';
 
 describe('floorHeight', () => {
   it('is flat ground outside', () => expect(floorHeight(-100, 0)).toBe(0));
@@ -32,6 +33,21 @@ describe('colliders', () => {
       expect(c.x1).toBeGreaterThan(c.x0);
       expect(c.z1).toBeGreaterThan(c.z0);
     }
+  });
+  it('stop a walker at trees, fences, and planters', () => {
+    const blocked = (x: number, z: number) => COLLIDERS.some((c) => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
+    for (const [x, z] of TREES) expect(blocked(x, z), `tree at ${x},${z}`).toBe(true);
+    for (const z of [-110, -90, -70]) {
+      expect(blocked(PLAZA.x0, z), `west fence at ${z}`).toBe(true);
+      expect(blocked(PLAZA.x1, z), `east fence at ${z}`).toBe(true);
+    }
+    expect(blocked(PLAZA.x0 + 4, -63)).toBe(true);
+    expect(blocked(PLAZA.x1 - 4, -63)).toBe(true);
+  });
+  it('leave the plaza entry and its north end open', () => {
+    const blocked = (x: number, z: number) => COLLIDERS.some((c) => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
+    for (const x of [PLAZA.axis - 5, PLAZA.axis, PLAZA.axis + 5]) expect(blocked(x, -63), `entry at ${x}`).toBe(false);
+    for (const x of [PLAZA.x0 + 1, PLAZA.axis, PLAZA.x1 - 1]) expect(blocked(x, PLAZA.z0 + 1), `north at ${x}`).toBe(false);
   });
   it('leave the main entrance and the walking start clear', () => {
     const blocked = (x: number, z: number) => COLLIDERS.some((c) => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COLLIDERS, WALK_BOUNDS, floorHeight } from './physics';
-import { BENCHES, SEATS, SEAT_REACH, cleanSeat, nearestSeat } from './seats';
+import { BENCHES, PLAZA, SEATS, SEAT_REACH, cleanSeat, nearestSeat } from './seats';
 
 const blocked = (x: number, z: number) => COLLIDERS.some((c) => x > c.x0 - 0.5 && x < c.x1 + 0.5 && z > c.z0 - 0.5 && z < c.z1 + 0.5);
 
@@ -10,7 +10,7 @@ describe('SEATS', () => {
     expect(SEATS).toHaveLength(20);
   });
   it('faces every seat toward the middle of the plaza', () => {
-    for (const seat of SEATS) expect(Math.sign(Math.sin(seat.rotation))).toBe(seat.x < 34 ? 1 : -1);
+    for (const seat of SEATS) expect(Math.sign(Math.sin(seat.rotation))).toBe(seat.x < PLAZA.axis ? 1 : -1);
   });
   it('leaves room to stand up, inside the walkable area', () => {
     for (const seat of SEATS) {
@@ -33,7 +33,7 @@ describe('nearestSeat', () => {
     expect(nearestSeat(first.standX, first.z, new Set())).toBe(0);
   });
   it('finds nothing when too far', () => {
-    expect(nearestSeat(34, -90, new Set())).toBeNull();
+    expect(nearestSeat(PLAZA.axis, -90, new Set())).toBeNull();
     expect(nearestSeat(first.x + SEAT_REACH + 3, first.z, new Set())).toBeNull();
   });
   it('skips a taken seat for the free one beside it', () => {

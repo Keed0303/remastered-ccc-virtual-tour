@@ -1,14 +1,21 @@
 import * as THREE from 'three';
+import { BARRETO, BROSAS, BURGOS, SV_RIZAL, SV_RIZAL_NORTH, offsetPath, pathLength, pointAlong, type PathPoint } from '../utils/streets';
 import { disposeObject } from './dispose';
 
-interface Lane { axis: 'x' | 'z'; fixed: number; dir: number; range: [number, number] }
+interface Lane { path: PathPoint[]; length: number; cars: number }
 
 const CAR_COLORS = ['#f4f6f8', '#c43d3d', '#3c6ec2', '#30343c', '#e0b23f', '#f4f6f8'];
+// Each direction keeps to the right of its street.
+const lane = (path: PathPoint[], side: number, cars: number): Lane => {
+  const moved = offsetPath(path, side);
+  return { path: moved, length: pathLength(moved), cars };
+};
 const LANES: Lane[] = [
-  { axis: 'z', fixed: -14.2, dir: 1, range: [-220, 210] }, { axis: 'z', fixed: -9.6, dir: -1, range: [-220, 210] },
-  { axis: 'x', fixed: -56, dir: 1, range: [-110, 155] }, { axis: 'x', fixed: -52.4, dir: -1, range: [-110, 155] },
-  { axis: 'z', fixed: 61, dir: 1, range: [-48, 210] }, { axis: 'z', fixed: 65, dir: -1, range: [-48, 210] },
-  { axis: 'x', fixed: 97.5, dir: -1, range: [-110, 155] },
+  lane(SV_RIZAL.path, 2.2, 2), lane([...SV_RIZAL.path].reverse(), 2.2, 2),
+  lane(SV_RIZAL_NORTH.path, 1.7, 1), lane([...SV_RIZAL_NORTH.path].reverse(), 1.7, 1),
+  lane(BARRETO.path, 2, 3), lane([...BARRETO.path].reverse(), 2, 3),
+  lane([...BROSAS.path].reverse(), 1.5, 2),
+  lane(BURGOS.path, 2, 2),
 ];
 
 function makeCar(color: string, tricycle: boolean) {
@@ -35,23 +42,21 @@ export class Traffic {
   constructor(scene: THREE.Scene) {
     scene.add(this.group);
     LANES.forEach((lane, i) => {
-      for (let k = 0; k < 2; k++) {
+      for (let k = 0; k < lane.cars; k++) {
         const car = makeCar(CAR_COLORS[(i + k) % CAR_COLORS.length], (i + k) % 3 === 0);
-        if (lane.axis === 'z') car.rotation.y = lane.dir > 0 ? 0 : Math.PI;
-        else car.rotation.y = lane.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
         this.group.add(car);
-        this.cars.push({ car, lane, p: lane.range[0] + Math.random() * (lane.range[1] - lane.range[0]), v: 7 + Math.random() * 4 });
+        this.cars.push({ car, lane, p: Math.random() * lane.length, v: 7 + Math.random() * 4 });
       }
     });
   }
 
   update(dt: number) {
     for (const t of this.cars) {
-      t.p += t.v * dt * t.lane.dir;
-      const [a, b] = t.lane.range;
-      if (t.p > b) t.p = a; else if (t.p < a) t.p = b;
-      if (t.lane.axis === 'z') t.car.position.set(t.lane.fixed, 0, t.p);
-      else t.car.position.set(t.p, 0, t.lane.fixed);
+      t.p += t.v * dt;
+      if (t.p > t.lane.length) t.p = 0;
+      const { x, z, heading } = pointAlong(t.lane.path, t.p);
+      t.car.position.set(x, 0, z);
+      t.car.rotation.y = heading;
     }
   }
 

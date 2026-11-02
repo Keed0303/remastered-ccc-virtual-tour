@@ -6,6 +6,8 @@ export default defineConfig({
   // Software WebGL and two-student tests overload the CPU when run in parallel.
   workers: 1,
   timeout: 90_000,
+  // With two students open, one software-drawn frame can take several seconds.
+  expect: { timeout: 15_000 },
   use: {
     baseURL: 'http://localhost:5174',
     channel: 'chrome',
